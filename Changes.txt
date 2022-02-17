@@ -1,0 +1,15 @@
+LiveIcons v0.1 alpha: 2022-02-17
+New. Added the code from my other project that I devcided to convert to this one and started to implement image management for thumbnails.
+New. Added zlib 'develop' branch as a submodule, made it to compile with the following changes:
+The zlib repo is added as a submodule and switched to the 'develop' branch because main is several years behind it.
+There is 2 projects zlibstat - compressiong and minizip - working with zip files. Had to do the following changes to the zlib projects:
+1. Changed 'Platform toolset' for zlibstat and minizip from VS2015(v140) to VS2022(v143). Also had to remove Itanium platform support because VS2022 does not have a toolset for it.
+2. Changed the C/C++ language to the latest.
+3. Removed inffas8664.c from the zlibstat project, it looks like its functionality moved, but the vcproj did not get updated by the author.
+4. Disabled warnings C5105 and C4244 for zlibstat, that makes the compilation output cleaner.
+5. Changed the reference for minizip from the dynamic library to the static zlibstat. Modified linker settings to link with the static library for all targets.
+6. Removed 'ReleaseWithoutAsm' from zlibstat configuration, made the regular Release config to be without using asm, this is because the asm files is missing in the 'develop' branch.
+7. In minizip disabled warning C5105, C4267 and C4067.
+8. In minizip removed the compilation option /Gm from the Debug build as this option is deprecated.
+9. Changed minizip project type to 'Static library'.
+10. Included ioapi.* and iowin32.* files into minizip project, for some reasonty it was missing it in 'develop' br.

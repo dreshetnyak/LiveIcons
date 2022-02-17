@@ -13,8 +13,10 @@
 #include <shlobj.h>     // For SHChangeNotify
 #include <mutex>
 #include <vector>
+#include <functional>
 #include <new>
 #include <thumbcache.h> // For IThumbnailProvider.
+#include <wincodec.h>
 #include "framework.h"
 #include "ReferenceCounter.h"
 

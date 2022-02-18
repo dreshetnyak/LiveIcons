@@ -1,3 +1,6 @@
+LiveIcons v0.2 alpha: 2022-02-18
+New. The zlib submodule is now pointing to the fork of zlib where I have commited the changes.
+
 LiveIcons v0.1 alpha: 2022-02-17
 New. Added the code from my other project that I devcided to convert to this one and started to implement image management for thumbnails.
 New. Added zlib 'develop' branch as a submodule, made it to compile with the following changes:

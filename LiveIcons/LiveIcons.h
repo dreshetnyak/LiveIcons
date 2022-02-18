@@ -1,11 +1,11 @@
 #pragma once
 
-class LiveIcons final : public IInitializeWithStream, public IThumbnailProvider
+class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
 {
     ReferenceCounter InstanceReferences{};
     IStream* Stream{};
 
-	LiveIcons() = default;
+	LiveIcons();
 
 public:
 	static HRESULT CreateInstance(REFIID riid, void** ppv);
@@ -23,6 +23,6 @@ public:
     IFACEMETHODIMP Initialize(IStream* stream, DWORD grfMode) override;
 
     // IThumbnailProvider
-    IFACEMETHODIMP GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha) override;
+    IFACEMETHODIMP GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_ALPHATYPE* putAlpha) override;
 };
 

@@ -30,3 +30,12 @@ namespace Utility
 		~OnDestructor() { Destructor(); }
 	};
 }
+
+
+namespace Log
+{
+	using namespace std;
+
+	void WriteToFile(const string& filePath, const string& message);
+	void Write(const string& message);
+}

@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Utility.h"
 
+#include <fstream>
+
 namespace Utility
 {
     wstring GetLastErrorStr()
@@ -58,4 +60,30 @@ namespace Utility
         decoded.resize(writeOffset);
 	    return decoded;
     }
+}
+
+namespace Log
+{
+    void Write(const string& message)
+    {
+        //OutputDebugString();
+        WriteToFile("C:\\Projects\\LiveIcons\\x64\\Debug\\log.txt", format("{:%Y-%m-%d %T} {}", static_cast<chrono::sys_time<chrono::nanoseconds>>(chrono::system_clock::now()), message).c_str());
+        //C:\Projects\LiveIcons\x64\Debug
+    }
+
+    std::mutex LogFileLock{};
+    void WriteToFile(const string& filePath, const string& message)
+    {
+        LogFileLock.lock();
+        ofstream file{ filePath, ios::out | ios::app };        
+        if (file.fail())
+        {
+            LogFileLock.unlock();
+	        return;
+        }
+        file << message << endl;
+        file.close();
+        LogFileLock.unlock();
+    }
+
 }

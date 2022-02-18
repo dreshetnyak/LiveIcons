@@ -175,6 +175,7 @@
     <ClInclude Include="GlobalMem.h" />
     <ClInclude Include="Gfx.h" />
     <ClInclude Include="LiveIcons.h" />
+    <ClInclude Include="Log.h" />
     <ClInclude Include="ParserBase.h" />
     <ClInclude Include="ParserEpub.h" />
     <ClInclude Include="pch.h" />

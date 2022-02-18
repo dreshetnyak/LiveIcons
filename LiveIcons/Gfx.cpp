@@ -33,16 +33,21 @@ namespace Gfx
 
 	HBITMAP ToBitmap(CImage& sourceImage, LPSIZE bitmapSize)
 	{
-		const auto src_width = sourceImage.GetWidth();
-		const auto src_height = sourceImage.GetHeight();
-		const auto bitmap_width = static_cast<float>(bitmapSize->cx);
-		const auto bitmap_height = static_cast<float>(bitmapSize->cy);
-		const auto src_to_bm_width = bitmap_width / static_cast<float>(src_width);
-		const auto src_to_bm_height = bitmap_height / static_cast<float>(src_height);
 
-		if (src_to_bm_width >= 1 && src_to_bm_height >= 1) // If the source image already fits into the bitmap and does not need scaling
-			return sourceImage.Detach();
+		return nullptr;
 
+		//const auto src_width = sourceImage.GetWidth();
+		//const auto src_height = sourceImage.GetHeight();
+		//const auto bitmap_width = static_cast<float>(bitmapSize->cx);
+		//const auto bitmap_height = static_cast<float>(bitmapSize->cy);
+		//const auto src_to_bm_width = bitmap_width / static_cast<float>(src_width);
+		//const auto src_to_bm_height = bitmap_height / static_cast<float>(src_height);
+
+		//if (src_to_bm_width >= 1 && src_to_bm_height >= 1) // If the source image already fits into the bitmap and does not need scaling
+		//	return sourceImage.Detach();
+
+
+		/*
 		// Scale down the image
 		auto device_context = static_cast<CDC>(CreateCompatibleDC(nullptr));
 		if (device_context.IsNull()) 
@@ -63,7 +68,7 @@ namespace Gfx
 		const auto old_bitmap = device_context.SelectBitmap(scaled_bitmap);
 		device_context.FillSolidRect(0, 0, scaled_width, scaled_height, RGB(255, 255, 255)); // White background
 
-
+		*/
 
 		//PIXELFORMATDESCRIPTOR ppfd{};
 		//auto x = DescribePixelFormat(device_context, 1, sizeof(ppfd), &ppfd);
@@ -90,7 +95,7 @@ namespace Gfx
 		//bitmap.FromHBITMAP(source_image, nullptr);
 
 
-
+		/*
 
 
 
@@ -145,6 +150,8 @@ namespace Gfx
 
 		device_context.SelectBitmap(old_bitmap);
 		return scaled_bitmap.Detach();
+
+		*/		
 	}
 
 
@@ -205,6 +212,9 @@ namespace Gfx
 		default: return L"image/bmp";  // NOLINT(clang-diagnostic-covered-switch-default)
 		}
 	}
+
+
+
 
 
 

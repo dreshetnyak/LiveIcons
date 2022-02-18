@@ -12,6 +12,7 @@
 #include <shlwapi.h>
 #include <shlobj.h>     // For SHChangeNotify
 #include <mutex>
+#include <string>
 #include <vector>
 #include <functional>
 #include <new>
@@ -19,5 +20,7 @@
 #include <wincodec.h>
 #include "framework.h"
 #include "ReferenceCounter.h"
+
+#include <system_error>
 
 #endif //PCH_H

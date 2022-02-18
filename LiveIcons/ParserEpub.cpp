@@ -81,7 +81,8 @@ namespace Parser
 			return shared_ptr<Result>{ new Result{ {}, StrLib::ToWstring(title), 0, {}, nullptr } };
 
 		coverImage.clear();
-		
+
+		/*
 		// Draw the image
 		const auto bitmap = Gfx::ToBitmap(cImage, unique_ptr<SIZE>{ new SIZE{ 256, 256 } }.get());
 
@@ -90,6 +91,7 @@ namespace Parser
 		const auto fileName = fileNameOffset != wstring::npos ? filePath.substr(fileNameOffset + 1) : filePath;
 		Gfx::SaveImage(bitmap, L"R:\\Temp\\EPUBX\\" + fileName + L".png", Gfx::ImageFileType::Png);
 		// TODO DEBUG CODE
+*/
 
 		return shared_ptr<Result>{ new Result{ {}, StrLib::ToWstring(title), 0, StrLib::ToWstring(coverPath), nullptr } };
 	}

@@ -1,10 +1,18 @@
 #include "pch.h"
 #include "Registry.h"
 
+#include "Utility.h"
+
 namespace Registry
 {
 	HRESULT SetEntry(const Entry& registryEntry)
 	{
+		constexpr char emptyStr[]{ '\x0' };
+		Log::Write(std::format("Registry::SetEntry: Key Name: '{}'; Value Name: '{}'; Data: '{}'", 
+			registryEntry.KeyName != nullptr ? StrLib::ToString(registryEntry.KeyName) : emptyStr,
+			registryEntry.ValueName != nullptr ? StrLib::ToString(registryEntry.ValueName) : emptyStr,
+			registryEntry.Data != nullptr ? StrLib::ToString(registryEntry.Data) : emptyStr));
+
 		HKEY hKey;
 		auto result = HRESULT_FROM_WIN32(RegCreateKeyExW(registryEntry.HKeyRoot, registryEntry.KeyName, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &hKey, nullptr));
 		if (FAILED(result))
@@ -23,7 +31,7 @@ namespace Registry
 	}
 
 	HRESULT SetEntries(const std::vector<Entry>& registryEntries)
-	{		
+	{
 		for (auto entry = registryEntries.begin(); entry != registryEntries.end(); ++entry)
 		{
 			if (const auto result = Registry::SetEntry(*entry); FAILED(result))
@@ -38,6 +46,8 @@ namespace Registry
 		constexpr auto fileNotFound = HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 		for (auto path = paths.begin(); path != paths.end(); ++path)
 		{
+			constexpr char emptyStr[]{ '\x0' };
+			Log::Write(std::format("Registry::DeleteRegistryPaths: Path: '{}'", *path != nullptr ? StrLib::ToString(*path) : emptyStr));
 			if (const auto result = HRESULT_FROM_WIN32(RegDeleteTreeW(HKEY_CURRENT_USER, *path)); result != fileNotFound && FAILED(result))
 				return result;
 		}

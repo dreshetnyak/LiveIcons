@@ -12,4 +12,4 @@ There is 2 projects zlibstat - compressiong and minizip - working with zip files
 7. In minizip disabled warning C5105, C4267 and C4067.
 8. In minizip removed the compilation option /Gm from the Debug build as this option is deprecated.
 9. Changed minizip project type to 'Static library'.
-10. Included ioapi.* and iowin32.* files into minizip project, for some reasonty it was missing it in 'develop' br.
+10. Included ioapi.* and iowin32.* files into minizip project, for some reasonty it was missing it in 'develop' branch.

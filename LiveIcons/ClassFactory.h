@@ -3,7 +3,7 @@
 
 class ClassFactory final : public IClassFactory
 {
-	ReferenceCounter InstanceReferences{};
+	ReferenceCounter ClassFactoryReferences{};
 
 	CreateInstanceFunction Create;
 	~ClassFactory();

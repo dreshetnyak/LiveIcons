@@ -2,7 +2,7 @@
 
 class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
 {
-    ReferenceCounter InstanceReferences{};
+    ReferenceCounter LiveIconsReferences{};
     IStream* Stream{};
 
 	LiveIcons();

@@ -43,7 +43,7 @@ ClassFactory::ClassFactory(CreateInstanceFunction createInstance): Create(create
 	try
 	{
 		Log::Write("ClassFactory::ClassFactory: Constructor.");
-		const auto instanceReferences = InstanceReferences.Increment();
+		const auto instanceReferences = ClassFactoryReferences.Increment();
 		Log::Write(std::format("ClassFactory::ClassFactory: InstanceReferences.Increment: {}", instanceReferences));
 		const auto dllRefCounter = dllReferenceCounter.Increment();
 		Log::Write(std::format("ClassFactory::ClassFactory: dllReferenceCounter.Increment: {}", dllRefCounter));
@@ -60,7 +60,7 @@ ClassFactory::~ClassFactory()
 	try
 	{
 		Log::Write("ClassFactory::~ClassFactory: Destructor.");
-		const auto instanceReferences = InstanceReferences.Decrement();
+		const auto instanceReferences = ClassFactoryReferences.Decrement();
 		Log::Write(std::format("ClassFactory::~ClassFactory: InstanceReferences.Decrement: {}", instanceReferences));
 		const auto dllRefCounter = dllReferenceCounter.Decrement();
 		Log::Write(std::format("ClassFactory::~ClassFactory: dllReferenceCounter.Decrement: {}", dllRefCounter));
@@ -120,8 +120,8 @@ ULONG ClassFactory::AddRef()
 {
 	try
 	{
-		const auto instanceReferences = InstanceReferences.Increment();
-		Log::Write(std::format("ClassFactory::AddRef: InstanceReferences.Increment: {}", instanceReferences));
+		const auto instanceReferences = ClassFactoryReferences.Increment();
+		Log::Write(std::format("ClassFactory::AddRef: ClassFactoryReferences.Increment: {}", instanceReferences));
 		return instanceReferences;
 	}
 	catch (const std::exception& ex)
@@ -136,9 +136,9 @@ ULONG ClassFactory::Release()
 {
 	try
 	{
-		const auto refCount = InstanceReferences.Decrement();
+		const auto refCount = ClassFactoryReferences.Decrement();
 		Log::Write(std::format("ClassFactory::Release: InstanceReferences.Decrement: {}", refCount));
-		if (InstanceReferences.NoReference())
+		if (ClassFactoryReferences.NoReference())
 		{
 			Log::Write("ClassFactory::Release: delete this.");
 			delete this;

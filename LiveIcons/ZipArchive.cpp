@@ -3,6 +3,11 @@
 
 namespace Zip
 {
+	Archive::Archive(IStream* fileStream) : ZipHandle(nullptr)
+	{
+
+	}
+
 	Archive::~Archive()
 	{
 		if (ZipHandle != nullptr)

@@ -15,6 +15,7 @@ namespace Zip
 
 	public:
 		explicit Archive(wstring fileName) : ZipName(move(fileName)), ZipHandle(nullptr) { }
+		explicit Archive(IStream* fileStream);
 		~Archive();
 
 		[[nodiscard]] int Open();

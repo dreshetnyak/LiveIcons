@@ -4,7 +4,8 @@
 
 LiveIcons::LiveIcons()
 {
-	Log::Write("LiveIcons::LiveIcons: Constructor.");
+	Log::Write("LiveIcons::LiveIcons: Constructor. LiveIconsReferences: 1");
+	static_cast<void>(LiveIconsReferences.Increment());
 }
 
 HRESULT LiveIcons::CreateInstance(const IID& riid, void** ppv)
@@ -22,7 +23,7 @@ HRESULT LiveIcons::CreateInstance(const IID& riid, void** ppv)
 		const auto result = instance->QueryInterface(riid, ppv);
 		instance->Release();
 
-		Log::Write(std::format("LiveIcons::CreateInstance: Finished. HRESULT: {}", std::system_category().message(result)));
+		Log::Write(std::format("LiveIcons::CreateInstance: Finished. HR: {}", std::system_category().message(result)));
 		return result;
 	}
 	catch (const std::exception& ex)
@@ -66,7 +67,7 @@ IFACEMETHODIMP LiveIcons::QueryInterface(REFIID riid, void** ppv)
 		};
 
 		const auto result = QISearch(this, QIT, riid, ppv);
-		Log::Write(std::format("LiveIcons::QueryInterface: Finished. HRESULT: {}", std::system_category().message(result)));
+		Log::Write(std::format("LiveIcons::QueryInterface: Finished. HR: {}", std::system_category().message(result)));
 		return result;
 	}
 	catch (const std::exception& ex)
@@ -81,8 +82,8 @@ ULONG LiveIcons::AddRef()
 {
 	try
 	{
-		const auto result = InstanceReferences.Increment();
-		Log::Write(std::format("LiveIcons::AddRef: {}", result));
+		const auto result = LiveIconsReferences.Increment();
+		Log::Write(std::format("LiveIcons::AddRef: LiveIconsReferences: {}", result));
 		return result;
 	}
 	catch (const std::exception& ex)
@@ -97,11 +98,14 @@ ULONG LiveIcons::Release()
 {
 	try
 	{
-		const auto refCount = InstanceReferences.Decrement();
-		Log::Write(std::format("LiveIcons::Release: {}", refCount));
+		const auto refCount = LiveIconsReferences.Decrement();
+		Log::Write(std::format("LiveIcons::Release: LiveIconsReferences: {}", refCount));
 
-		if (InstanceReferences.NoReference())
+		if (LiveIconsReferences.NoReference())
+		{
+			Log::Write("LiveIcons::Release: delete this");
 			delete this;
+		}
 		return refCount;
 	}
 	catch (const std::exception& ex)
@@ -119,11 +123,14 @@ IFACEMETHODIMP LiveIcons::Initialize(IStream* stream, DWORD)
 {
 	try
 	{
-		Log::Write("LiveIcons::Initialize.");
+		Log::Write("LiveIcons::Initialize. Starting.");
 
-		return stream == nullptr
+		const auto result = Stream == nullptr
 			? stream->QueryInterface(&Stream)
 			: E_UNEXPECTED;
+
+		Log::Write(std::format("LiveIcons::Initialize: Finished. HR: {}", std::system_category().message(result)));
+		return result;
 	}
 	catch (const std::exception& ex)
 	{
@@ -132,6 +139,8 @@ IFACEMETHODIMP LiveIcons::Initialize(IStream* stream, DWORD)
 		return E_UNEXPECTED;
 	}
 }
+
+
 
 ///////////////////////////
 // IThumbnailProvider
@@ -142,14 +151,20 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 	{
 		Log::Write("LiveIcons::GetThumbnail.");
 
-		STATSTG streamStat{};
-		if (const auto result = Stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
+		if (Stream != nullptr)
 		{
-			Log::Write("LiveIcons::GetThumbnail. Stream->Stat. Error.");
-			return result;
+			STATSTG streamStat{};
+			if (const auto result = Stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
+			{
+				Log::Write("LiveIcons::Initialize. Stream->Stat. Error.");
+				return result;
+			}
+			Log::Write(std::format("Initialize: pwcsName '{}'", streamStat.pwcsName != nullptr ? StrLib::ToString(streamStat.pwcsName) : ""));
 		}
+		else
+			Log::Write("LiveIcons::Initialize. pStream is null.");
 
-		Log::Write(std::format("GetThumbnail: {}", StrLib::ToString(streamStat.pwcsName)));
+		
 
 
 		//PWSTR pszBase64EncodedImageString;

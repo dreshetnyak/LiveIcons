@@ -189,6 +189,7 @@
     <ClInclude Include="ZipArchive.h" />
     <ClInclude Include="ZipCache.h" />
     <ClInclude Include="ZipPosition.h" />
+    <ClInclude Include="ZipStream.h" />
     <ClInclude Include="ZLibInternals.h" />
   </ItemGroup>
   <ItemGroup>
@@ -211,6 +212,7 @@
     <ClCompile Include="XmlDocument.cpp" />
     <ClCompile Include="ZipArchive.cpp" />
     <ClCompile Include="ZipCache.cpp" />
+    <ClCompile Include="ZipStream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="LiveIcons.def" />

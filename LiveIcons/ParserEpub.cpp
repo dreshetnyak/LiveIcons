@@ -51,11 +51,22 @@ namespace Parser
 		{"img", "src=", "src"},
 	};
 
+	std::shared_ptr<Result> Epub::Parse(IStream* stream)
+	{
+		ParsingContext epub{};
+		epub.Zip.reset(new Zip::Archive{ stream });
+		return Parse(epub);
+	}
+
 	std::shared_ptr<Result> Epub::Parse(const std::wstring& filePath)
 	{
 		ParsingContext epub{};
-
 		epub.Zip.reset(new Zip::Archive{ filePath });
+		return Parse(epub);
+	}
+
+	std::shared_ptr<Result> Epub::Parse(ParsingContext& epub)
+	{
 		auto& zip = *epub.Zip;
 		if (int result; (result = zip.Open()) != UNZ_OK)
 		{
@@ -91,7 +102,7 @@ namespace Parser
 		const auto fileName = fileNameOffset != wstring::npos ? filePath.substr(fileNameOffset + 1) : filePath;
 		Gfx::SaveImage(bitmap, L"R:\\Temp\\EPUBX\\" + fileName + L".png", Gfx::ImageFileType::Png);
 		// TODO DEBUG CODE
-*/
+		*/
 
 		return shared_ptr<Result>{ new Result{ {}, StrLib::ToWstring(title), 0, StrLib::ToWstring(coverPath), nullptr } };
 	}

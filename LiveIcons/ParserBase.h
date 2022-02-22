@@ -20,7 +20,8 @@ namespace Parser
 	{
 	public:
 		virtual bool CanParse(const wstring& fileName) = 0;
-		virtual shared_ptr<Result> Parse(const wstring& fileName) = 0;
+		virtual shared_ptr<Result> Parse(const wstring& fileName);
+		virtual shared_ptr<Result> Parse(IStream* stream);
 		virtual ~Base() = default;
 	};
 }

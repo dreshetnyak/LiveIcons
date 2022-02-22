@@ -1,11 +1,17 @@
 #include "pch.h"
 #include "ZipArchive.h"
+#include "ZipStream.h"
 
 namespace Zip
 {
-	Archive::Archive(IStream* fileStream) : ZipHandle(nullptr)
+	Archive::Archive(wstring fileName) : ZipName(move(fileName))
 	{
+		fill_win32_filefunc64W(&ZlibFunctions);		
+	}
 
+	Archive::Archive(IStream* fileStream) : FileStream(fileStream)
+	{
+		ZipStream::SetIStreamHandlers(&ZlibFunctions);		
 	}
 
 	Archive::~Archive()
@@ -16,12 +22,13 @@ namespace Zip
 
 	int Archive::Open()
 	{
-		if (ZipName.empty())
-			return UNZ_PARAMERROR;
-
-		zlib_filefunc64_def zlibFunctions;
-		fill_win32_filefunc64W(&zlibFunctions);
-		ZipHandle = unzOpen2_64(ZipName.c_str(), &zlibFunctions);
+		if (!ZipName.empty())
+			ZipHandle = unzOpen2_64(ZipName.c_str(), &ZlibFunctions);
+		else if (FileStream != nullptr)
+			ZipHandle = unzOpen2_64(FileStream, &ZlibFunctions);
+		else
+			return UNZ_PARAMERROR;		
+		
 		if (ZipHandle == nullptr)
 			return UNZ_BADZIPFILE;
 		ZipFiles.reset(new Cache{ ZipHandle });

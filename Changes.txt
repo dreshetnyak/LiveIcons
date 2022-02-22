@@ -1,3 +1,6 @@
+LiveIcons v0.4 alpha: 2022-02-22
+Wip. Integrating the IStream parsing, not done yet.
+
 LiveIcons v0.3 alpha: 2022-02-21
 Fix. Fixed a couple of bugs that caused internal crashes.
 New. Started implementing file stream handler for zlib for it to be able to work with IStream.

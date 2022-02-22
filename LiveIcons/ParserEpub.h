@@ -26,6 +26,7 @@ namespace Parser
 	public:
 		Epub() = default;
 		bool CanParse(const wstring& fileExtension) override { return StrLib::EqualsCi(fileExtension, wstring(L".epub")); }
+		shared_ptr<Result> Parse(IStream* stream) override;
 		shared_ptr<Result> Parse(const wstring& filePath) override;
 
 	private:
@@ -34,6 +35,8 @@ namespace Parser
 		static vector<string> HtmlFileExtensions;
 		static vector<tuple<string, string, string>> XmlTagsThatMayContainCoverPath;
 		static vector<tuple<string, string, string>> HtmlTagsThatMayContainCoverPath;
+
+		shared_ptr<Result> Parse(ParsingContext& epub);
 
 		bool GetCoverPath(const ParsingContext& epub, string& outCoverFilePath) const;
 		bool GetCoverPathFromRootFile(const ParsingContext& epub, string& outCoverFilePath) const;

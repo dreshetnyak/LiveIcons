@@ -196,6 +196,7 @@
     <ClCompile Include="ClassFactory.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="DllMain.cpp" />
+    <ClCompile Include="ParserBase.cpp" />
     <ClCompile Include="ParserEpub.cpp" />
     <ClCompile Include="GlobalMem.cpp" />
     <ClCompile Include="Gfx.cpp" />

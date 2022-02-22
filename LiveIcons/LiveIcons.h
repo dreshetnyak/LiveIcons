@@ -6,6 +6,7 @@ class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
     IStream* Stream{};
 
 	LiveIcons();
+    static std::string GetIStreamFileExtension(IStream* stream);
 
 public:
 	static HRESULT CreateInstance(REFIID riid, void** ppv);

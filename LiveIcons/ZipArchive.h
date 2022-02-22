@@ -9,12 +9,14 @@ namespace Zip
 
 	class Archive final
 	{
-		wstring ZipName;
-		unzFile ZipHandle;
-		unique_ptr<Cache> ZipFiles;
+		zlib_filefunc64_def ZlibFunctions{};
+		wstring ZipName{};		// We get the name or the stream, not both
+		IStream* FileStream{};
+		unzFile ZipHandle{};
+		unique_ptr<Cache> ZipFiles;		
 
 	public:
-		explicit Archive(wstring fileName) : ZipName(move(fileName)), ZipHandle(nullptr) { }
+		explicit Archive(wstring fileName);
 		explicit Archive(IStream* fileStream);
 		~Archive();
 

@@ -150,22 +150,12 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 	try
 	{
 		Log::Write("LiveIcons::GetThumbnail.");
-
-		if (Stream != nullptr)
-		{
-			STATSTG streamStat{};
-			if (const auto result = Stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
-			{
-				Log::Write("LiveIcons::Initialize. Stream->Stat. Error.");
-				return result;
-			}
-			Log::Write(std::format("Initialize: pwcsName '{}'", streamStat.pwcsName != nullptr ? StrLib::ToString(streamStat.pwcsName) : ""));
-		}
-		else
-			Log::Write("LiveIcons::Initialize. pStream is null.");
-
-		
-
+	
+		const auto fileExtension = GetIStreamFileExtension(Stream);
+		if (fileExtension == ".epub")
+		{}
+		else if (fileExtension == ".epub")
+		{}
 
 		//PWSTR pszBase64EncodedImageString;
 		//HRESULT hr = _GetBase64EncodedImageString(cx, &pszBase64EncodedImageString);
@@ -190,5 +180,18 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 		Log::Write(std::format("LiveIcons::GetThumbnail: Exception: '{}'", message != nullptr ? message : ""));
 		return E_UNEXPECTED;
 	}
+}
 
+std::string LiveIcons::GetIStreamFileExtension(IStream *stream)
+{
+	if (stream == nullptr)
+		return {};
+	STATSTG streamStat{};
+	if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
+		return {};
+	const auto fileName = StrLib::ToString(streamStat.pwcsName);
+	const auto extensionOffset = fileName.find_last_of('.');
+	return extensionOffset != std::string::npos
+		? fileName.substr(extensionOffset)
+		: std::string{};	
 }

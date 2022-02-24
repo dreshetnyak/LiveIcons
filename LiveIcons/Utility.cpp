@@ -2,6 +2,7 @@
 #include "Utility.h"
 
 #include <fstream>
+#include "GlobalMem.h"
 
 namespace Utility
 {

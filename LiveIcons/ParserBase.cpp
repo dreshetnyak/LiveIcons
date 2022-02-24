@@ -1,15 +1,22 @@
 #include "pch.h"
 #include "ParserBase.h"
+#include "Utility.h"
 
 namespace Parser
 {
-	shared_ptr<Result> Base::Parse(const wstring& fileName)
+	bool Base::CanParse(const wstring& fileName)
 	{
-		return shared_ptr<Result>{ new Result{ L"Not implemented", {}, 0, {}, nullptr} };
+		Log::Write("Parser::Base: Error: Invalid Base Method Call.");
+		return false;
 	}
 
-	shared_ptr<Result> Base::Parse(IStream* stream)
+	Result Base::Parse(const wstring& fileName)
+	{		
+		return Result{ E_NOTIMPL };
+	}
+
+	Result Base::Parse(IStream* stream)
 	{
-		return shared_ptr<Result>{ new Result{ L"Not implemented", {}, 0, {}, nullptr } };
+		return Result{ E_NOTIMPL };
 	}
 }

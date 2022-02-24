@@ -3,12 +3,6 @@
 
 namespace Utility
 {
-	GlobalMem::GlobalMem(const size_t size) : MemSize(size), MemHandle()
-	{
-		if (!Allocate() || !Lock())
-			ErrorMessage = GetLastErrorStr();
-	}
-
 	GlobalMem::~GlobalMem()
 	{
 		if (MemHandle == nullptr)
@@ -18,27 +12,39 @@ namespace Utility
 		GlobalFree(MemHandle);
 	}
 
-	bool GlobalMem::Allocate()
+	HRESULT GlobalMem::AllocateAndLock(const size_t size)
+	{
+		const auto result = Allocate(size);
+		return SUCCEEDED(result)
+			? Lock()
+			: result;
+	}
+
+	HRESULT GlobalMem::Allocate(const size_t size)
 	{
 		if (MemHandle != nullptr)
-			return false;
-		MemHandle = GlobalAlloc(GMEM_MOVEABLE | GMEM_NODISCARD, MemSize);
-		return MemHandle != nullptr;
+			return E_INVALIDARG;
+		return (MemHandle = GlobalAlloc(GMEM_MOVEABLE | GMEM_NODISCARD, size)) != nullptr
+			? S_OK
+			: HRESULT_FROM_WIN32(GetLastError());
 	}
 
-	bool GlobalMem::Lock()
+	HRESULT GlobalMem::Lock()
 	{
-		if (MemPtr != nullptr)
-			return true;
-		MemPtr = GlobalLock(MemHandle);
-		return MemPtr != nullptr;
+		return MemPtr != nullptr || (MemPtr = GlobalLock(MemHandle)) != nullptr
+			? S_OK
+			: HRESULT_FROM_WIN32(GetLastError());
 	}
 
-	void GlobalMem::Unlock()
+	HRESULT GlobalMem::Unlock()
 	{
 		if (MemPtr == nullptr)
-			return;
-		GlobalUnlock(MemHandle);
+			return S_OK;
+
+		static_cast<void>(GlobalUnlock(MemHandle));		
+		if (const auto result = GetLastError(); result != NO_ERROR)
+			return HRESULT_FROM_WIN32(result);
 		MemPtr = nullptr;
+		return S_OK;
 	}
 }

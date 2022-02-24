@@ -1,12 +1,15 @@
 #pragma once
+#include "ParserBase.h"
+#include "ParserEpub.h"
 
 class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
 {
+    static std::vector<std::shared_ptr<Parser::Base>> Parsers;
     ReferenceCounter LiveIconsReferences{};
     IStream* Stream{};
 
 	LiveIcons();
-    static std::string GetIStreamFileExtension(IStream* stream);
+    static std::wstring GetIStreamFileExtension(IStream* stream);
 
 public:
 	static HRESULT CreateInstance(REFIID riid, void** ppv);
@@ -26,4 +29,3 @@ public:
     // IThumbnailProvider
     IFACEMETHODIMP GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_ALPHATYPE* putAlpha) override;
 };
-

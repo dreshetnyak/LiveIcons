@@ -18,9 +18,10 @@ namespace Gfx
 
 	enum class ImageFileType { Bmp, Png, Jpg };
 
-	bool LoadImage(CImage& outImage, const vector<char>& sourceImage);
+	HRESULT LoadImageToHBitmap(const vector<char>& sourceImage, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize);
+
 	HBITMAP ToBitmap(CImage& sourceImage, LPSIZE bitmapSize);
 	bool SaveImage(HBITMAP bitmapHandle, const wstring& fileName, ImageFileType fileType);
 	bool GetEncoderClsid(const wstring& mimeType, CLSID* outClsid);
-	const wchar_t* GetMimeType(ImageFileType fileType);
+	const wchar_t* GetMimeType(ImageFileType fileType);	
 }

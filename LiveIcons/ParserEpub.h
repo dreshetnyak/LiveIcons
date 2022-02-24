@@ -25,9 +25,9 @@ namespace Parser
 
 	public:
 		Epub() = default;
-		bool CanParse(const wstring& fileExtension) override { return StrLib::EqualsCi(fileExtension, wstring(L".epub")); }
-		shared_ptr<Result> Parse(IStream* stream) override;
-		shared_ptr<Result> Parse(const wstring& filePath) override;
+		bool CanParse(const wstring& fileExtension) override;
+		Result Parse(IStream* stream) override;
+		Result Parse(const wstring& filePath) override;
 
 	private:
 		static vector<string> PossibleRootFileLocations;
@@ -36,7 +36,7 @@ namespace Parser
 		static vector<tuple<string, string, string>> XmlTagsThatMayContainCoverPath;
 		static vector<tuple<string, string, string>> HtmlTagsThatMayContainCoverPath;
 
-		shared_ptr<Result> Parse(ParsingContext& epub);
+		Result Parse(ParsingContext& epub) const;
 
 		bool GetCoverPath(const ParsingContext& epub, string& outCoverFilePath) const;
 		bool GetCoverPathFromRootFile(const ParsingContext& epub, string& outCoverFilePath) const;
@@ -44,10 +44,10 @@ namespace Parser
 		bool GetImagePath(const Zip::Archive& zip, const string& currentPath, string& imagePath) const;
 		bool GetCoverPathFromNcx(const ParsingContext& epub, string& outCoverImagePath) const;
 
-		static bool GetCoverFromFirstImage(const Zip::Archive& zip, string& outImagePath, CImage& outCImage);
-		static bool GetCoverFromImage(const vector<char>& image, CImage& outCImage);
+		static bool GetCoverFromFirstImage(const Zip::Archive& zip, HBITMAP& coverBitmap, WTS_ALPHATYPE& coverBitmapAlpha);
+		static HRESULT GetCoverBitmap(const vector<char>& imageFileData, HBITMAP& coverBitmap, WTS_ALPHATYPE& coverBitmapAlpha);
 
-		static bool ImageSatisfiesCoverConstraints(const CImage& image);
+		static bool ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize);
 		static bool GetCoverPathFromHtml(const Zip::Archive& zip, const string& htmlPath, string& outCoverFilePath);
 		static bool GetCoverPathTagIdFromMetaTag(const Xml::Document& rootFileXml, string& outCoverFilePath);
 		static bool GetCoverPathFromMetaFile(const ParsingContext& epub, const string& coverMetaTagContent, string& outCoverFilePath);

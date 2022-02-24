@@ -2,6 +2,11 @@
 #include "LiveIcons.h"
 #include "Utility.h"
 
+std::vector<std::shared_ptr<Parser::Base>> LiveIcons::Parsers
+{
+	std::make_shared<Parser::Epub>(Parser::Epub{})
+};
+
 LiveIcons::LiveIcons()
 {
 	Log::Write("LiveIcons::LiveIcons: Constructor. LiveIconsReferences: 1");
@@ -140,8 +145,6 @@ IFACEMETHODIMP LiveIcons::Initialize(IStream* stream, DWORD)
 	}
 }
 
-
-
 ///////////////////////////
 // IThumbnailProvider
 
@@ -149,13 +152,33 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 {
 	try
 	{
-		Log::Write("LiveIcons::GetThumbnail.");
+		Log::Write("LiveIcons::GetThumbnail: Starting.");
 	
 		const auto fileExtension = GetIStreamFileExtension(Stream);
-		if (fileExtension == ".epub")
-		{}
-		else if (fileExtension == ".epub")
-		{}
+		Log::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: File extension: '{}'", fileExtension)));
+
+		for (auto& parser : Parsers)
+		{
+			Log::Write("LiveIcons::GetThumbnail: parser->CanParse.");
+			if (!parser->CanParse(fileExtension))
+			{
+				Log::Write("LiveIcons::GetThumbnail: Can't parse this file extension. Next parser.");
+				continue;
+			}
+
+			Log::Write("LiveIcons::GetThumbnail: parser->Parse.");
+			const auto&& parseResult = parser->Parse(Stream);
+			if (FAILED(parseResult.HResult))
+			{
+				Log::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: Parsing error: {}", parseResult.Error)));
+				return parseResult.HResult;
+			}
+
+			Log::Write("LiveIcons::GetThumbnail: Parsing success. Cover image obtained.");
+			*outBitmapHandle = parseResult.Cover;
+			*putAlpha = parseResult.CoverAlpha;
+			return S_OK;
+		}
 
 		//PWSTR pszBase64EncodedImageString;
 		//HRESULT hr = _GetBase64EncodedImageString(cx, &pszBase64EncodedImageString);
@@ -172,7 +195,8 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 		//}
 		//return hr;
 
-		return E_UNEXPECTED; //
+		Log::Write("LiveIcons::GetThumbnail: Failed to parse.");
+		return E_FAIL;
 	}
 	catch (const std::exception& ex)
 	{
@@ -182,16 +206,16 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 	}
 }
 
-std::string LiveIcons::GetIStreamFileExtension(IStream *stream)
+std::wstring LiveIcons::GetIStreamFileExtension(IStream *stream)
 {
 	if (stream == nullptr)
 		return {};
 	STATSTG streamStat{};
 	if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
 		return {};
-	const auto fileName = StrLib::ToString(streamStat.pwcsName);
+	const std::wstring fileName{ streamStat.pwcsName };
 	const auto extensionOffset = fileName.find_last_of('.');
 	return extensionOffset != std::string::npos
 		? fileName.substr(extensionOffset)
-		: std::string{};	
+		: std::wstring{};	
 }

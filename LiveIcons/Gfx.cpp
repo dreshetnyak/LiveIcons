@@ -1,35 +1,140 @@
 #include "pch.h"
 #include "Gfx.h"
-
+#include "DataIStream.h"
+#include "Utility.h"
 
 namespace Gfx
 {
-	bool LoadImage(CImage& outImage, const vector<char>& sourceImage)
+	HRESULT ConvertPixelFormat(IWICBitmapSource* bitmapSource, IWICImagingFactory* imagingFactory, IWICBitmapSource* bitmapSourceConverted)
 	{
-		const auto sourceImageSize = sourceImage.size();
-		Utility::GlobalMem memory{sourceImageSize};
-		if (!memory.Valid())
-			return false;
-		CopyMemory(memory.Ptr(), sourceImage.data(), sourceImageSize);
-		memory.Unlock();
+		IWICFormatConverter* formatConverter;
+		if (const auto result = imagingFactory->CreateFormatConverter(&formatConverter); FAILED(result))
+			return result;
+		Utility::OnDestructor releaseImagingFactory{ [&]() -> void { formatConverter->Release(); } };
 
-		IStream* stream = nullptr;
-		if (FAILED(CreateStreamOnHGlobal(memory.Handle(), false, &stream)))
-			return false;
-
-		auto returnCode = true;
-		try
-		{
-			outImage.Destroy();
-			if (outImage.Load(stream) == E_FAIL)
-				returnCode = false;
-		}
-		catch (...)
-		{ returnCode = false; }
-
-		stream->Release();
-		return returnCode;
+		// Create the appropriate pixel format converter
+		const auto result = formatConverter->Initialize(bitmapSource, GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, nullptr, 0, WICBitmapPaletteTypeCustom);
+		return SUCCEEDED(result)
+			? formatConverter->QueryInterface(&bitmapSourceConverted)
+			: result;
 	}
+
+	HRESULT ConvertBitmapSourceTo32BppHBitmap(IWICBitmapSource* bitmapSource, IWICImagingFactory* imagingFactory, HBITMAP& outConvertedBitmap, SIZE& imageSize)
+	{
+		Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: Call.");
+
+		outConvertedBitmap = nullptr;
+
+		IWICBitmapSource* bitmapSourceConverted = nullptr;
+		WICPixelFormatGUID guidPixelFormatSource;
+
+		Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: GetPixelFormat.");
+		auto result = bitmapSource->GetPixelFormat(&guidPixelFormatSource);
+
+		Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: ConvertPixelFormat or QueryInterface.");
+		result = SUCCEEDED(result) && guidPixelFormatSource != GUID_WICPixelFormat32bppBGRA
+			? ConvertPixelFormat(bitmapSource, imagingFactory, bitmapSourceConverted)
+			: bitmapSource->QueryInterface(&bitmapSourceConverted); // No need to convert
+		if (FAILED(result))
+			return result;
+		Utility::OnDestructor releaseDecoder{ [&]() -> void
+		{
+			Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: OnDestructor.releaseDecoder: bitmapSourceConverted->Release()");
+			bitmapSourceConverted->Release();
+			Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: OnDestructor.releaseDecoder. Completed.");
+		} };
+
+		Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: GetSize.");
+		UINT nWidth, nHeight;
+		if (result = bitmapSourceConverted->GetSize(&nWidth, &nHeight); FAILED(result))
+			return result;
+		imageSize.cx = static_cast<LONG>(nWidth);
+		imageSize.cy = static_cast<LONG>(nHeight);
+
+		BITMAPINFO bitmapInfo{};
+		bitmapInfo.bmiHeader.biSize = sizeof bitmapInfo.bmiHeader;
+		bitmapInfo.bmiHeader.biWidth = static_cast<LONG>(nWidth);
+		bitmapInfo.bmiHeader.biHeight = -static_cast<LONG>(nHeight);
+		bitmapInfo.bmiHeader.biPlanes = 1;
+		bitmapInfo.bmiHeader.biBitCount = 32;
+		bitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+		Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: CreateDIBSection.");
+		BYTE* ppvBits;
+		const auto newBitmap = CreateDIBSection(nullptr, &bitmapInfo, DIB_RGB_COLORS, reinterpret_cast<void**>(&ppvBits), nullptr, 0);
+		if (newBitmap == nullptr)
+			return E_OUTOFMEMORY;
+
+		Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: CopyPixels.");
+		const WICRect rect{ 0, 0, static_cast<INT>(nWidth), static_cast<INT>(nHeight) };
+		if (result = bitmapSourceConverted->CopyPixels(&rect, nWidth * 4, nWidth * nHeight * 4, ppvBits); SUCCEEDED(result)) // It actually does conversion, not just copy. The converted pixels is store in newBitmap
+		{
+			Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: HBITMAP obtained.");
+			outConvertedBitmap = newBitmap;
+		}
+		else
+		{
+			Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: DeleteObject.");
+			DeleteObject(newBitmap);
+		}
+
+		Log::Write("Epub::ConvertBitmapSourceTo32BppHBitmap: Finished.");
+		return result;
+	}
+
+	HRESULT WicCreate32BitsPerPixelHBitmap(IStream* stream, HBITMAP& outNewBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize)
+	{
+		Log::Write("Epub::WicCreate32BitsPerPixelHBitmap: Call.");
+
+		outNewBitmap = nullptr;
+
+		Log::Write("Epub::WicCreate32BitsPerPixelHBitmap: Creating decoder factory.");
+		IWICImagingFactory* imagingFactory;
+		if (const auto result = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&imagingFactory)); FAILED(result))
+			return result;
+		Utility::OnDestructor releaseImagingFactory{ [&]() -> void { imagingFactory->Release(); } };
+
+		Log::Write("Epub::WicCreate32BitsPerPixelHBitmap: Creating decoder.");
+		IWICBitmapDecoder* decoder;
+		if (const auto result = imagingFactory->CreateDecoderFromStream(stream, &GUID_VendorMicrosoft, WICDecodeMetadataCacheOnDemand, &decoder); FAILED(result))
+			return result;
+		Utility::OnDestructor releaseDecoder{ [&]() -> void { decoder->Release(); } };
+
+		Log::Write("Epub::WicCreate32BitsPerPixelHBitmap: Get decoded frame.");
+		IWICBitmapFrameDecode* bitmapFrameDecode;
+		if (const auto result = decoder->GetFrame(0, &bitmapFrameDecode); FAILED(result))
+			return result;
+		Utility::OnDestructor releaseBitmapFrameDecode{ [&]() -> void { bitmapFrameDecode->Release(); } };
+
+		Log::Write("Epub::WicCreate32BitsPerPixelHBitmap: ConvertBitmapSourceTo32BppHBitmap.");
+		const auto result = ConvertBitmapSourceTo32BppHBitmap(bitmapFrameDecode, imagingFactory, outNewBitmap, imageSize);
+		Log::Write("Epub::WicCreate32BitsPerPixelHBitmap: ConvertBitmapSourceTo32BppHBitmap. Completed.");
+		if (SUCCEEDED(result))
+			outAlphaType = WTSAT_ARGB;
+
+		Log::Write("Epub::WicCreate32BitsPerPixelHBitmap: Finished.");
+		return result;
+	}
+	
+	HRESULT LoadImageToHBitmap(const vector<char>& sourceImage, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize)
+	{
+		Log::Write("Epub::LoadImageToHBitmap: Call.");
+
+		const Utility::DataIStream imageIStream{sourceImage};
+
+		Log::Write("Epub::LoadImageToHBitmap: Utility::DataIStream imageIStream instantiated.");
+
+		const auto result = imageIStream.GetHResult();
+
+		Log::Write("Epub::LoadImageToHBitmap: imageIStream.GetHResult obtained.");
+		return SUCCEEDED(result)
+			? WicCreate32BitsPerPixelHBitmap(imageIStream.GetIStream(), outBitmap, outAlphaType, imageSize)
+			: result;
+	}
+
+
+
+
 
 	HBITMAP ToBitmap(CImage& sourceImage, LPSIZE bitmapSize)
 	{
@@ -154,9 +259,7 @@ namespace Gfx
 		*/		
 	}
 
-
-
-
+	
 
 	bool SaveImage(HBITMAP bitmapHandle, const wstring& fileName, const ImageFileType fileType)
 	{
@@ -212,94 +315,7 @@ namespace Gfx
 		default: return L"image/bmp";  // NOLINT(clang-diagnostic-covered-switch-default)
 		}
 	}
-
-
-
-
-
-
-
-
-	HRESULT ConvertPixelFormat(IWICBitmapSource* bitmapSource, IWICImagingFactory* imagingFactory, IWICBitmapSource* bitmapSourceConverted)
-	{
-		IWICFormatConverter* formatConverter;		
-		if (const auto result = imagingFactory->CreateFormatConverter(&formatConverter); FAILED(result))
-			return result;
-		Utility::OnDestructor releaseImagingFactory{ [&]() -> void { formatConverter->Release(); } };
 	
-		// Create the appropriate pixel format converter
-		const auto result = formatConverter->Initialize(bitmapSource, GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, nullptr, 0, WICBitmapPaletteTypeCustom);
-		return SUCCEEDED(result)
-			? formatConverter->QueryInterface(&bitmapSourceConverted)
-			: result;
-	}
-
-	HRESULT ConvertBitmapSourceTo32BppHBitmap(IWICBitmapSource* bitmapSource, IWICImagingFactory* imagingFactory, HBITMAP* outConvertedBitmap)
-	{
-		*outConvertedBitmap = nullptr;
-
-		IWICBitmapSource* bitmapSourceConverted = nullptr;
-		WICPixelFormatGUID guidPixelFormatSource;
-
-		auto result = bitmapSource->GetPixelFormat(&guidPixelFormatSource);
-		result = SUCCEEDED(result) && guidPixelFormatSource != GUID_WICPixelFormat32bppBGRA
-			? ConvertPixelFormat(bitmapSource, imagingFactory, bitmapSourceConverted)
-			: bitmapSource->QueryInterface(&bitmapSourceConverted); // No need to convert
-		if (FAILED(result))
-			return result;
-		Utility::OnDestructor releaseDecoder{ [&]() -> void { bitmapSourceConverted->Release(); } };
-
-		UINT nWidth, nHeight;
-		if (result = bitmapSourceConverted->GetSize(&nWidth, &nHeight); FAILED(result))
-			return result;
-				
-		BITMAPINFO bitmapInfo{};
-		bitmapInfo.bmiHeader.biSize = sizeof bitmapInfo.bmiHeader;
-		bitmapInfo.bmiHeader.biWidth = static_cast<LONG>(nWidth);
-		bitmapInfo.bmiHeader.biHeight = -static_cast<LONG>(nHeight);
-		bitmapInfo.bmiHeader.biPlanes = 1;
-		bitmapInfo.bmiHeader.biBitCount = 32;
-		bitmapInfo.bmiHeader.biCompression = BI_RGB;
-
-		BYTE* ppvBits;
-		const auto newBitmap = CreateDIBSection(nullptr, &bitmapInfo, DIB_RGB_COLORS, reinterpret_cast<void**>(&ppvBits), nullptr, 0);
-		if (newBitmap == nullptr)
-			return E_OUTOFMEMORY;
-
-		const WICRect rect{ 0, 0, static_cast<INT>(nWidth), static_cast<INT>(nHeight) };
-		if (result = bitmapSourceConverted->CopyPixels(&rect, nWidth * 4, nWidth * nHeight * 4, ppvBits); SUCCEEDED(result)) // It actually does conversion, not just copy. The converted pixels is store in newBitmap
-			*outConvertedBitmap = newBitmap;
-		else
-			DeleteObject(newBitmap);
-
-		return result;
-	}
-
-	HRESULT WicCreate32BitsPerPixelHBitmap(IStream* stream, HBITMAP* outNewBitmap, WTS_ALPHATYPE* outAlphaType)
-	{
-		*outNewBitmap = nullptr;
-
-		IWICImagingFactory* imagingFactory;		
-		if (const auto result = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&imagingFactory)); FAILED(result))
-			return result;
-		Utility::OnDestructor releaseImagingFactory{ [&]() -> void { imagingFactory->Release(); } };
-
-		IWICBitmapDecoder* decoder;
-		if (const auto result = imagingFactory->CreateDecoderFromStream(stream, &GUID_VendorMicrosoft, WICDecodeMetadataCacheOnDemand, &decoder); FAILED(result))
-			return result;
-		Utility::OnDestructor releaseDecoder{ [&]() -> void { decoder->Release(); } };
-		
-		IWICBitmapFrameDecode* bitmapFrameDecode;
-		if (const auto result = decoder->GetFrame(0, &bitmapFrameDecode); FAILED(result))
-			return result;
-		Utility::OnDestructor releaseBitmapFrameDecode{ [&]() -> void { bitmapFrameDecode->Release(); } };
-
-		const auto result = ConvertBitmapSourceTo32BppHBitmap(bitmapFrameDecode, imagingFactory, outNewBitmap);
-		if (SUCCEEDED(result))
-			*outAlphaType = WTSAT_ARGB;
-		
-		return result;
-	}
 
 
 }

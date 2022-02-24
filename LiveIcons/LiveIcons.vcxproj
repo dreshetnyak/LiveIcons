@@ -170,6 +170,7 @@
   <ItemGroup>
     <ClInclude Include="ClassFactory.h" />
     <ClInclude Include="Configuration.h" />
+    <ClInclude Include="DataIStream.h" />
     <ClInclude Include="DllMain.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="GlobalMem.h" />
@@ -195,6 +196,7 @@
   <ItemGroup>
     <ClCompile Include="ClassFactory.cpp" />
     <ClCompile Include="Configuration.cpp" />
+    <ClCompile Include="DataIStream.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="ParserBase.cpp" />
     <ClCompile Include="ParserEpub.cpp" />

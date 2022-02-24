@@ -34,7 +34,7 @@ namespace Registry
 	{
 		for (auto entry = registryEntries.begin(); entry != registryEntries.end(); ++entry)
 		{
-			if (const auto result = Registry::SetEntry(*entry); FAILED(result))
+			if (const auto result = SetEntry(*entry); FAILED(result))
 				return result;
 		}
 

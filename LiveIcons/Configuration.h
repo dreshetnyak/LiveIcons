@@ -6,7 +6,7 @@
 #define REG_SOFTWARE_CLASSES_CLSID L"Software\\Classes\\CLSID\\"
 #define REG_INPROCSERVER32 L"\\InProcServer32"
 #define REG_SOFTWARE_CLASSES L"Software\\Classes\\"
-#define CLSID_I_THUMBNAIL_PROVIDER_PATH L"Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
+#define CLSID_I_THUMBNAIL_PROVIDER_PATH L"Software\\Classes\\.epub\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
 
 typedef HRESULT(*CreateInstanceFunction)(REFIID riid, void** ppvObject);
 

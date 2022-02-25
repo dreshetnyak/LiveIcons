@@ -19,6 +19,7 @@ namespace Xml
 		bool GetTagThatContains(const string& tagName, const string& containsStr, string& outTag) const;
 		bool GetTagAttributeValue(const string& tagName, const string& containsStr, const string& attributeName, string& outAttributeValue) const;
 		bool GetElementContent(const string& elementName, const size_t offset, string& outElementContent) const;
+		bool GetElementTagContainsContentPos(const string& elementName, const string& tagContainsStr, string& outElementContent) const;
 		static bool GetTagAttribute(const string& tag, const string& attributeName, string& outAttributeValue);
 
 	private:

@@ -179,6 +179,7 @@
     <ClInclude Include="Log.h" />
     <ClInclude Include="ParserBase.h" />
     <ClInclude Include="ParserEpub.h" />
+    <ClInclude Include="ParserFb2.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ReferenceCounter.h" />
     <ClInclude Include="Registry.h" />
@@ -203,6 +204,7 @@
     <ClCompile Include="GlobalMem.cpp" />
     <ClCompile Include="Gfx.cpp" />
     <ClCompile Include="LiveIcons.cpp" />
+    <ClCompile Include="ParserFb2.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

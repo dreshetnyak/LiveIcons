@@ -15,20 +15,12 @@ namespace Utility
     
 	string UrlDecode(const string& urlEncoded);
 
-	class OnDestructor final
-	{
-		const function<void()>& Destructor;
+	HRESULT ReadFile(const std::wstring& fileFullName, std::vector<char>& outFileContent);
 
-	public:
-		OnDestructor() = delete;
-		OnDestructor(const OnDestructor& disposable) = delete;
-		OnDestructor(OnDestructor&& disposable) = delete;
-		OnDestructor& operator=(const OnDestructor& other) = delete;
-		OnDestructor& operator=(OnDestructor&& other) = delete;
-
-		explicit OnDestructor(const function<void()>& destructor) : Destructor(destructor) { }
-		~OnDestructor() { Destructor(); }
-	};
+	HRESULT GetIStreamFileExtension(IStream* stream, wstring& outFileExtension);
+	HRESULT GetIStreamFileSize(IStream* stream, ULONGLONG& outSize);
+	HRESULT SeekToBeginning(IStream* stream);
+	HRESULT ReadIStream(IStream* stream, std::vector<char>& outFileContent);
 }
 
 

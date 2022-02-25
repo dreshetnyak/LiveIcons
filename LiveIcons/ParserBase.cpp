@@ -1,12 +1,10 @@
 #include "pch.h"
 #include "ParserBase.h"
-#include "Utility.h"
 
 namespace Parser
 {
-	bool Base::CanParse(const wstring& fileName)
+	bool Base::CanParse(const wstring& fileExtension)
 	{
-		Log::Write("Parser::Base: Error: Invalid Base Method Call.");
 		return false;
 	}
 

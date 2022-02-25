@@ -49,7 +49,7 @@ namespace Parser
 	class Base
 	{
 	public:
-		virtual bool CanParse(const wstring& fileName);
+		virtual bool CanParse(const wstring& fileExtension);
 		virtual Result Parse(const wstring& fileName);
 		virtual Result Parse(IStream* stream);
 		virtual ~Base() = default;

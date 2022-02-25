@@ -61,6 +61,69 @@ namespace Utility
         decoded.resize(writeOffset);
 	    return decoded;
     }
+
+    HRESULT ReadFile(const std::wstring& fileFullName, std::vector<char>& outFileContent)
+    {
+        std::ifstream fileStream{ fileFullName, ios::in | ios::binary | ios::ate };
+        if (!fileStream.is_open())
+            return ERROR_FILE_NOT_FOUND;
+        outFileContent.reserve(fileStream.tellg());
+        fileStream.seekg(0);
+        std::copy(std::istream_iterator<char>(fileStream), std::istream_iterator<char>(), std::back_inserter(outFileContent));
+        fileStream.close();
+        return S_OK;
+    }
+
+    HRESULT GetIStreamFileExtension(IStream* stream, wstring& outFileExtension)
+    {
+        if (stream == nullptr)
+            return ERROR_BAD_ARGUMENTS;
+        STATSTG streamStat{};
+        if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
+            return result;
+        const std::wstring fileName{ streamStat.pwcsName };
+        const auto extensionOffset = fileName.find_last_of('.');
+        if (extensionOffset == std::string::npos)
+            return E_FAIL;
+        outFileExtension = fileName.substr(extensionOffset);
+        return S_OK;
+    }
+
+    HRESULT GetIStreamFileSize(IStream* stream, ULONGLONG& outSize)
+    {
+        if (stream == nullptr)
+            return ERROR_BAD_ARGUMENTS;
+        STATSTG streamStat{};
+        if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
+            return result;
+        outSize = streamStat.cbSize.QuadPart;
+        return S_OK;
+    }
+
+    HRESULT SeekToBeginning(IStream* stream)
+    {
+        constexpr LARGE_INTEGER position{ { 0, 0 } };
+        ULARGE_INTEGER currentPosition{};
+        return stream->Seek(position, STREAM_SEEK_SET, &currentPosition);
+    }
+
+    HRESULT ReadIStream(IStream* stream, std::vector<char>& outFileContent)
+    {
+        ULONGLONG size{};
+        if (const auto result = GetIStreamFileSize(stream, size); FAILED(result))
+            return result;
+        outFileContent.resize(size);
+        
+        if (const auto result = SeekToBeginning(stream); FAILED(result))
+            return result;
+
+        ULONG bytesRead{};
+        if (const auto result = stream->Read(outFileContent.data(), static_cast<ULONG>(size), &bytesRead); FAILED(result))
+            return result;
+
+        static_cast<void>(SeekToBeginning(stream));
+        return S_OK;
+    }
 }
 
 namespace Log
@@ -68,7 +131,9 @@ namespace Log
     void Write(const string& message)
     {
         //OutputDebugString();
+#ifdef _DEBUG
         WriteToFile("C:\\Projects\\LiveIcons\\x64\\Debug\\log.txt", format("{:%Y-%m-%d %T} {}", static_cast<chrono::sys_time<chrono::nanoseconds>>(chrono::system_clock::now()), message).c_str());
+#endif
         //C:\Projects\LiveIcons\x64\Debug
     }
 

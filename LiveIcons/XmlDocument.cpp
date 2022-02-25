@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "XmlDocument.h"
-#include "utility.h"
+#include "Utility.h"
 
 namespace Xml
 {
@@ -80,6 +80,44 @@ namespace Xml
 		outElementContent = XmlStr.substr(contentBegin, closingTagBegin - contentBegin);
 		return true;
 	}
+
+	// We return postion of the content instead of the content to avoid excessive copying
+	bool Document::GetElementTagContainsContentPos(const string& elementName, const string& tagContainsStr, SIZE& outContentPosition) const
+	{
+		size_t containedStrOffset = 0;
+		while ((containedStrOffset = StrLib::FindCi(XmlStr, tagContainsStr, containedStrOffset)) != string::npos)
+		{
+			const auto tagBegin = StrLib::FindReverse(XmlStr, '<', containedStrOffset++);
+			if (tagBegin == string::npos)
+				continue;
+
+			string currentTagName;
+			if (const auto tagEndOffset = ReadTagName(tagBegin + 1, currentTagName);
+				tagEndOffset == string::npos ||
+				!StrLib::EqualsCi(currentTagName, elementName))
+				continue;
+
+			const auto tagEnd = XmlStr.find('>', containedStrOffset);
+			if (tagEnd == string::npos)
+				return false;
+						
+			string closingTag = format("</{}>", elementName);
+			const auto closingTagOffset = StrLib::FindCi(XmlStr, tagContainsStr, tagEnd);
+			if (closingTagOffset == string::npos)
+				return false;
+
+			const auto contentSize = closingTagOffset - tagEnd - 1;
+			if (contentSize == 0)
+				return false;
+
+			outContentPosition.cx = tagEnd + 1;
+			outContentPosition.cy = contentSize;
+			return true;
+		}
+
+		return false;
+	}
+
 
 	//tag must be "<tag attr="" />"
 	bool Document::GetTagAttribute(const string& tag, const string& attributeName, string& outAttributeValue)

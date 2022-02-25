@@ -1,3 +1,9 @@
+LiveIcons v0.5 alpha: 2022-02-25
+Fix. Fixed the issue that was causing the program to terminate.
+Fix. Release build was failing due to a missing link reference.
+Wip. Started writing FB2 parser, simple enough, will be ready soon.
+Epub is now working!
+
 LiveIcons v0.4 alpha: 2022-02-22
 Wip. Integrating the IStream parsing, not done yet.
 

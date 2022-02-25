@@ -53,7 +53,6 @@ namespace Parser
 
 	bool Epub::CanParse(const wstring& fileExtension)
 	{
-		Log::Write(StrLib::ToString(format(L"Parser::Epub::CanParse: Comparing: '{}' to '.epub'", fileExtension)));
 		return StrLib::EqualsCi(fileExtension, wstring{ L".epub" });
 	}
 
@@ -73,30 +72,16 @@ namespace Parser
 
 	Result Epub::Parse(ParsingContext& epub) const
 	{
-		Log::Write("Epub::Parse: Starting.");
-
 		auto& zip = *epub.Zip;
-		Log::Write("Epub::Parse: zip.Open.");
 		if (int result; (result = zip.Open()) != UNZ_OK)
-		{			
-			Log::Write(StrLib::ToString(std::format(L"Epub::Parse: zip.Open: Error: {}", Zip::GetErrorMessage(result))));
 			return Result{ ERROR_CANT_ACCESS_FILE, std::format(L"Zip opening error: {}", Zip::GetErrorMessage(result)) };
-		}
-
-		Log::Write("Epub::Parse: zip.Open: Success.");
 
 		vector<char> rootFileContentData;
 		static_cast<void>(GetRootFileContent(epub, epub.RootFilePath, rootFileContentData));
 		epub.RootFileXml.reset(new Xml::Document{ string{ rootFileContentData } });
 		string title;
 		if (!rootFileContentData.empty())
-		{
-			Log::Write("Epub::Parse: Root file content obtained.");
 			epub.RootFileXml->GetElementContent("title", 0, title);
-			Log::Write("Epub::Parse: GetElementContent(title). Completed.");
-		}
-		else
-			Log::Write("Epub::Parse: Unable to obtain root file.");
 
 		string coverPath{};
 		vector<char> coverImageBytes{};
@@ -106,27 +91,13 @@ namespace Parser
 		if (GetCoverPath(epub, coverPath) && zip.ReadPath(coverPath, coverImageBytes) && GetCoverBitmap(coverImageBytes, coverBitmap, coverBitmapAlpha) == S_OK)
 			return Result{ StrLib::ToWstring(title), coverBitmap, coverBitmapAlpha };
 
-		Log::Write("Epub::Parse: Can't get the cover image using path, trying to get a first image.");
-
 		return GetCoverFromFirstImage(zip, coverBitmap, coverBitmapAlpha)
 			? Result{ StrLib::ToWstring(title), coverBitmap, coverBitmapAlpha }
 			: Result{ E_FAIL, L"Unable to parse the EPUB file" };
-
-		/*
-		// Draw the image
-		const auto bitmap = Gfx::ToBitmap(cImage, unique_ptr<SIZE>{ new SIZE{ 256, 256 } }.get());
-
-		// TODO DEBUG CODE
-		const auto fileNameOffset = StrLib::FindReverse(filePath, L'\\');
-		const auto fileName = fileNameOffset != wstring::npos ? filePath.substr(fileNameOffset + 1) : filePath;
-		Gfx::SaveImage(bitmap, L"R:\\Temp\\EPUBX\\" + fileName + L".png", Gfx::ImageFileType::Png);
-		// TODO DEBUG CODE
-		*/
 	}
 
 	bool Epub::GetCoverPath(const ParsingContext& epub, string& outCoverFilePath) const
 	{
-		Log::Write("Epub::GetCoverPath: Call.");
 		return GetCoverPathFromRootFile(epub, outCoverFilePath) || 
 			GetCoverPathFromNcx(epub, outCoverFilePath);
 	}
@@ -204,8 +175,6 @@ namespace Parser
 
 	bool Epub::GetCoverPathFromTagContainsCover(const Xml::Document& rootFileXml, string& outCoverFilePath)
 	{
-		Log::Write("Epub::GetCoverPathFromTagContainsCover: Call.");
-
 		string tag, hrefValue, idValue;
 		for (size_t offset = 0; rootFileXml.GetTag("item", offset, tag); offset += tag.size())
 		{
@@ -223,8 +192,6 @@ namespace Parser
 
 	bool Epub::GetImagePath(const Zip::Archive& zip, const string& currentPath, string& imagePath) const
 	{
-		Log::Write("Epub::GetImagePath: Call.");
-
 		auto absoluteImagePath = Utility::ToAbsolutePath(currentPath, imagePath);
 		if (StrLib::EndsWith(absoluteImagePath, HtmlFileExtensions))
 		{
@@ -240,8 +207,6 @@ namespace Parser
 
 	bool Epub::GetCoverPathFromHtml(const Zip::Archive& zip, const string& htmlPath, string& outCoverFilePath)
 	{
-		Log::Write("Epub::GetCoverPathFromHtml: Call.");
-
 		vector<char> htmlFileContent;
 		if (!zip.ReadPath(htmlPath, htmlFileContent))
 			return false;
@@ -267,8 +232,6 @@ namespace Parser
 
 	bool Epub::GetCoverPathFromNcx(const ParsingContext& epub, string& outCoverImagePath) const
 	{
-		Log::Write("Epub::GetCoverPathFromNcx: Call.");
-
 		const auto& zip = *epub.Zip;
 		const auto filePosition = zip.Find([&](const string& path) -> bool { return StrLib::EndsWith(path, static_cast<const basic_string<char>>(".ncx")); });
 		if (filePosition == END_OF_LIST)
@@ -307,8 +270,6 @@ namespace Parser
 
 	bool Epub::GetCoverFromFirstImage(const Zip::Archive& zip, HBITMAP& coverBitmap, WTS_ALPHATYPE& coverBitmapAlpha)
 	{
-		Log::Write("Epub::GetCoverFromFirstImage: Call.");
-
 		SIZE imageSize{ 0, 0 };
 		vector<char> imageFileData;
 		vector<const Zip::Position*> images;
@@ -340,30 +301,17 @@ namespace Parser
 
 	HRESULT Epub::GetCoverBitmap(const vector<char>& imageFileData, HBITMAP& coverBitmap, WTS_ALPHATYPE& coverBitmapAlpha)
 	{
-		Log::Write("Epub::GetCoverBitmap: Call.");
-
 		SIZE imageSize{ 0, 0 };
-
-		Log::Write("Epub::GetCoverBitmap: LoadImageToHBitmap.");
 		if (const auto result = Gfx::LoadImageToHBitmap(imageFileData, coverBitmap, coverBitmapAlpha, imageSize); FAILED(result))
 			return result;
-
-		Log::Write("Epub::GetCoverBitmap: ImageSizeSatisfiesCoverConstraints.");
 		if (ImageSizeSatisfiesCoverConstraints(imageSize))
-		{
-			Log::Write("Epub::GetCoverBitmap: Success.");
 			return S_OK;
-		}
-
-		Log::Write("Epub::GetCoverBitmap: DeleteObject.");
 		DeleteObject(coverBitmap);
 		return S_FALSE;
 	}
 
 	bool Epub::ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize)
 	{
-		Log::Write("Epub::ImageSizeSatisfiesCoverConstraints: Call.");
-
 		const auto width = imageSize.cx;
 		const auto height = imageSize.cy;
 		return width > 1 && height > 1 && (height >= width || (width / height < 2)); // If the width is two times or more of height then it is likely not the cover but some other image.
@@ -371,8 +319,6 @@ namespace Parser
 	
 	bool Epub::GetCoverPathTagIdFromMetaTag(const Xml::Document& rootFileXml, string& outCoverFilePath)
 	{
-		Log::Write("Epub::GetCoverPathTagIdFromMetaTag: Call.");
-
 		string coverTag;
 		return rootFileXml.GetTagThatContains("meta", "name=\"cover\"", coverTag) &&
 			Xml::Document::GetTagAttribute(coverTag, "content", outCoverFilePath);
@@ -380,8 +326,6 @@ namespace Parser
 
 	bool Epub::GetCoverPathFromMetaFile(const ParsingContext& epub, const string& coverMetaTagContent, string& outCoverFilePath)
 	{
-		Log::Write("Epub::GetCoverPathFromMetaFile: Call.");
-
 		if (!StrLib::EndsWith(coverMetaTagContent, ImageFileExtensions) || 
 			!epub.Zip->FileExists(coverMetaTagContent))
 			return false;
@@ -391,8 +335,6 @@ namespace Parser
 
 	bool Epub::GetCoverPathTagIdFromIdrefTag(const Xml::Document& rootFileXml, string& outTagIdOrFilePath)
 	{
-		Log::Write("Epub::GetCoverPathTagIdFromIdrefTag: Call.");
-
 		string tag;
 		return rootFileXml.GetTagThatContains("itemref", "idref=", tag) &&
 			Xml::Document::GetTagAttribute(tag, "idref", outTagIdOrFilePath);
@@ -400,8 +342,6 @@ namespace Parser
 
 	bool Epub::GetRootFileContent(const ParsingContext& epub, string& outRootFilePath, vector<char>& outRootFileContent)
 	{
-		Log::Write("Epub::GetRootFileContent: Call.");
-
 		const auto& zip = *epub.Zip;
 		return GetRootFilePathFromContainer(epub, outRootFilePath) && zip.ReadPath(outRootFilePath, outRootFileContent) ||
 			zip.ReadMatching(outRootFilePath, outRootFileContent, [&](const string& path) -> bool { return StrLib::EqualsCiOneOf(path, PossibleRootFileLocations); }) ||
@@ -410,8 +350,6 @@ namespace Parser
 
 	bool Epub::GetRootFilePathFromContainer(const ParsingContext& epub, string& outRootFilePath)
 	{
-		Log::Write("Epub::GetRootFilePathFromContainer: Call.");
-
 		vector<char> fileContent;
 		if (!epub.Zip->ReadPath("META-INF/container.xml", fileContent))
 			return false;

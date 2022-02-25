@@ -153,20 +153,18 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 	try
 	{
 		Log::Write("LiveIcons::GetThumbnail: Starting.");
-	
-		const auto fileExtension = GetIStreamFileExtension(Stream);
+
+		std::wstring fileExtension{};
+		if (const auto result = Utility::GetIStreamFileExtension(Stream, fileExtension); FAILED(result))
+			return E_FAIL;
+
 		Log::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: File extension: '{}'", fileExtension)));
 
-		for (auto& parser : Parsers)
+		for (const auto& parser : Parsers)
 		{
-			Log::Write("LiveIcons::GetThumbnail: parser->CanParse.");
 			if (!parser->CanParse(fileExtension))
-			{
-				Log::Write("LiveIcons::GetThumbnail: Can't parse this file extension. Next parser.");
 				continue;
-			}
 
-			Log::Write("LiveIcons::GetThumbnail: parser->Parse.");
 			const auto&& parseResult = parser->Parse(Stream);
 			if (FAILED(parseResult.HResult))
 			{
@@ -179,6 +177,18 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 			*putAlpha = parseResult.CoverAlpha;
 			return S_OK;
 		}
+
+
+		/*
+		// Draw the image
+		const auto bitmap = Gfx::ToBitmap(cImage, unique_ptr<SIZE>{ new SIZE{ 256, 256 } }.get());
+
+		// TODO DEBUG CODE
+		const auto fileNameOffset = StrLib::FindReverse(filePath, L'\\');
+		const auto fileName = fileNameOffset != wstring::npos ? filePath.substr(fileNameOffset + 1) : filePath;
+		Gfx::SaveImage(bitmap, L"R:\\Temp\\EPUBX\\" + fileName + L".png", Gfx::ImageFileType::Png);
+		// TODO DEBUG CODE
+		*/
 
 		//PWSTR pszBase64EncodedImageString;
 		//HRESULT hr = _GetBase64EncodedImageString(cx, &pszBase64EncodedImageString);
@@ -204,18 +214,4 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 		Log::Write(std::format("LiveIcons::GetThumbnail: Exception: '{}'", message != nullptr ? message : ""));
 		return E_UNEXPECTED;
 	}
-}
-
-std::wstring LiveIcons::GetIStreamFileExtension(IStream *stream)
-{
-	if (stream == nullptr)
-		return {};
-	STATSTG streamStat{};
-	if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
-		return {};
-	const std::wstring fileName{ streamStat.pwcsName };
-	const auto extensionOffset = fileName.find_last_of('.');
-	return extensionOffset != std::string::npos
-		? fileName.substr(extensionOffset)
-		: std::wstring{};	
 }

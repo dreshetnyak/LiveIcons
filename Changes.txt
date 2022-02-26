@@ -1,3 +1,7 @@
+LiveIcons v0.6 alpha: 2022-02-26
+New. FB2 cover extractor added.
+Release is not compilable, the last commit from my other PC did not get all the changes.
+
 LiveIcons v0.5 alpha: 2022-02-25
 Fix. Fixed the issue that was causing the program to terminate.
 Fix. Release build was failing due to a missing link reference.

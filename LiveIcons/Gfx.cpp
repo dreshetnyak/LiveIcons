@@ -112,6 +112,17 @@ namespace Gfx
 			: result;
 	}
 
+	bool ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize)
+	{
+		const auto width = imageSize.cx;
+		const auto height = imageSize.cy;
+		return width > 1 && height > 1 && (height >= width || (width / height < 2)); // If the width is two times or more of height then it is likely not the cover but some other image.
+	}
+
+
+
+
+
 
 
 

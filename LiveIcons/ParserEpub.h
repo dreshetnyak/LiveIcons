@@ -47,7 +47,6 @@ namespace Parser
 		static bool GetCoverFromFirstImage(const Zip::Archive& zip, HBITMAP& coverBitmap, WTS_ALPHATYPE& coverBitmapAlpha);
 		static HRESULT GetCoverBitmap(const vector<char>& imageFileData, HBITMAP& coverBitmap, WTS_ALPHATYPE& coverBitmapAlpha);
 
-		static bool ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize);
 		static bool GetCoverPathFromHtml(const Zip::Archive& zip, const string& htmlPath, string& outCoverFilePath);
 		static bool GetCoverPathTagIdFromMetaTag(const Xml::Document& rootFileXml, string& outCoverFilePath);
 		static bool GetCoverPathFromMetaFile(const ParsingContext& epub, const string& coverMetaTagContent, string& outCoverFilePath);

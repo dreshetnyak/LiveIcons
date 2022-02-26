@@ -66,10 +66,10 @@ namespace StrLib
     {
         const auto strSize = str.size();
         if (strSize == 0)
-            return string::npos;
+            return basic_string<T>::npos;
         const auto findStrSize = findStr.size();
         if (findStrSize == 0 || strSize < findStrSize)
-            return string::npos;
+            return basic_string<T>::npos;
         const auto strLimit = strSize - findStrSize;
 
         for (auto strIndex = offset; strIndex <= strLimit; ++strIndex)
@@ -87,7 +87,7 @@ namespace StrLib
                 return strIndex;
         }
 
-        return string::npos;
+        return basic_string<T>::npos;
     }
 
     template<typename T>
@@ -95,7 +95,7 @@ namespace StrLib
     {
         const auto strSize = str.size();
         if (strSize == 0)
-            return string::npos;
+            return basic_string<T>::npos;
         if (offset == basic_string<T>::npos)
             offset = strSize - 1;
 
@@ -105,7 +105,7 @@ namespace StrLib
                 return index;
         }
 
-        return string::npos;
+        return basic_string<T>::npos;
     }
 
     template<typename T>
@@ -164,7 +164,7 @@ namespace StrLib
         vector<basic_string<T>> splitStr;
         const auto strSize = str.size();
         size_t prevChOffset = 0;
-        for (size_t chOffset = 0; chOffset < strSize && (chOffset = str.find(splitCh, chOffset)) != string::npos; prevChOffset = ++chOffset)
+        for (size_t chOffset = 0; chOffset < strSize && (chOffset = str.find(splitCh, chOffset)) != basic_string<T>::npos; prevChOffset = ++chOffset)
         {
             if (const auto subStrSize = chOffset - prevChOffset; subStrSize > 0)
                 splitStr.push_back(str.substr(prevChOffset, subStrSize));
@@ -196,8 +196,24 @@ namespace StrLib
     basic_string<T> PreserveLeftOfLast(const basic_string<T> src, const T ch)
     {
         const auto strEndOffset = src.find_last_of('/');
-        return strEndOffset != string::npos && strEndOffset != 0
+        return strEndOffset != basic_string<T>::npos && strEndOffset != 0
             ? src.substr(0, strEndOffset)
             : basic_string<T>{};
+    }
+
+    template<typename T>
+    void Filter(basic_string<T> src, const basic_string<T> removeChars)
+    {
+        size_t writeIndex{ 0 };
+        const auto srcSize = src.size();
+	    for (size_t readIndex = 0; readIndex < srcSize; ++readIndex)
+	    {
+            const auto ch = src[readIndex];
+            if (removeChars.find_first_of(ch) == basic_string<T>::npos)
+	            src[writeIndex++] = ch;
+	    }
+
+        if (writeIndex != srcSize)
+            src.resize(writeIndex);
     }
 }

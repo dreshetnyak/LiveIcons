@@ -16,6 +16,7 @@
 #include <vector>
 #include <functional>
 #include <new>
+#include <fstream>
 #include <thumbcache.h> // For IThumbnailProvider.
 #include <wincodec.h>
 #include "framework.h"

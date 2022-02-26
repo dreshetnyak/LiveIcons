@@ -1,7 +1,5 @@
 #include "pch.h"
 #include "Utility.h"
-
-#include <fstream>
 #include "GlobalMem.h"
 
 namespace Utility
@@ -74,14 +72,19 @@ namespace Utility
         return S_OK;
     }
 
-    HRESULT GetIStreamFileExtension(IStream* stream, wstring& outFileExtension)
+    HRESULT GetIStreamFileName(IStream* stream, wstring& outFileName)
     {
         if (stream == nullptr)
             return ERROR_BAD_ARGUMENTS;
         STATSTG streamStat{};
         if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
             return result;
-        const std::wstring fileName{ streamStat.pwcsName };
+        outFileName = std::wstring{ streamStat.pwcsName };
+        return S_OK;
+    }
+
+    HRESULT GetFileExtension(const wstring& fileName, wstring& outFileExtension)
+    {
         const auto extensionOffset = fileName.find_last_of('.');
         if (extensionOffset == std::string::npos)
             return E_FAIL;
@@ -124,6 +127,41 @@ namespace Utility
         static_cast<void>(SeekToBeginning(stream));
         return S_OK;
     }
+
+    HRESULT DecodeBase64(const string& base64Encoded, vector<char>& outDecoded)
+    {
+        Log::Write("Utility::DecodeBase64: Starting.");
+
+    	const auto encodedDataPtr = base64Encoded.data();
+        const auto encodedSize = static_cast<DWORD>(base64Encoded.size());
+
+        Log::Write(format("Utility::DecodeBase64: Encoded size: {}", encodedSize));
+
+    	DWORD dwDecodedSize = 0, dwSkipChars = 0, dwActualFormat = 0;        
+        if (!CryptStringToBinaryA(
+            encodedDataPtr,
+            encodedSize,
+            CRYPT_STRING_BASE64, 
+            nullptr, 
+            &dwDecodedSize, 
+            &dwSkipChars, 
+            &dwActualFormat))
+            return E_FAIL;
+
+        Log::Write(format("Utility::DecodeBase64: Decoded size: {}", dwDecodedSize));
+        outDecoded.resize(dwDecodedSize);
+
+        return CryptStringToBinaryA(
+            encodedDataPtr,
+            encodedSize,
+            CRYPT_STRING_BASE64,
+            reinterpret_cast<BYTE*>(outDecoded.data()),
+            &dwDecodedSize,
+            &dwSkipChars,
+            &dwActualFormat)
+            ? S_OK
+            : E_FAIL;
+    }
 }
 
 namespace Log
@@ -152,4 +190,13 @@ namespace Log
         LogFileLock.unlock();
     }
 
+
+    void WriteFile(const string& filePath, const vector<char>& content)
+    {
+        ofstream file{ filePath, ios::out | ios::app | ios::binary };
+        if (file.fail())
+	        return;
+        file.write(content.data(), content.size());
+        file.close();
+    }
 }

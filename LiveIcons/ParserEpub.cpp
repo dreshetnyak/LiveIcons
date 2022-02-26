@@ -104,8 +104,6 @@ namespace Parser
 
 	bool Epub::GetCoverPathFromRootFile(const ParsingContext& epub, string& outCoverFilePath) const
 	{
-		Log::Write("Epub::GetCoverPathFromRootFile: Call.");
-
 		const auto& rootFileXml = *epub.RootFileXml;
 		const auto& rootFilePath = epub.RootFilePath;
 		if (rootFileXml.Empty())
@@ -153,8 +151,6 @@ namespace Parser
 
 	bool Epub::GetCoverPathFromItemOrFile(const Zip::Archive& zip, const Xml::Document& rootFileXml, const string& rootFilePath, const string& tagIdOrFilePath, string& outCoverFilePath) const
 	{
-		Log::Write("Epub::GetCoverPathFromItemOrFile: Call.");
-
 		string path;
 
 		// Assume that the 'content' attribute value is an id of the 'item' tag containing cover in href (most of the cases)
@@ -290,7 +286,7 @@ namespace Parser
 			zip.SetCurrent(*imagePosition);
 			if (!zip.ReadCurrent(imageFileData) || Gfx::LoadImageToHBitmap(imageFileData, coverBitmap, coverBitmapAlpha, imageSize) != S_OK )
 				continue;
-			if (ImageSizeSatisfiesCoverConstraints(imageSize))
+			if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
 				return true;
 			
 			DeleteObject(coverBitmap);
@@ -304,19 +300,12 @@ namespace Parser
 		SIZE imageSize{ 0, 0 };
 		if (const auto result = Gfx::LoadImageToHBitmap(imageFileData, coverBitmap, coverBitmapAlpha, imageSize); FAILED(result))
 			return result;
-		if (ImageSizeSatisfiesCoverConstraints(imageSize))
+		if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
 			return S_OK;
 		DeleteObject(coverBitmap);
 		return S_FALSE;
 	}
 
-	bool Epub::ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize)
-	{
-		const auto width = imageSize.cx;
-		const auto height = imageSize.cy;
-		return width > 1 && height > 1 && (height >= width || (width / height < 2)); // If the width is two times or more of height then it is likely not the cover but some other image.
-	}
-	
 	bool Epub::GetCoverPathTagIdFromMetaTag(const Xml::Document& rootFileXml, string& outCoverFilePath)
 	{
 		string coverTag;

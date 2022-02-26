@@ -81,10 +81,9 @@ namespace Xml
 		return true;
 	}
 
-	// We return postion of the content instead of the content to avoid excessive copying
-	bool Document::GetElementTagContainsContentPos(const string& elementName, const string& tagContainsStr, SIZE& outContentPosition) const
+	bool Document::GetElementTagContainsContentPos(const string& elementName, const string& tagContainsStr, const size_t startOffset, span<char>& outContent,  DataSpan& outElementDataSpan) const
 	{
-		size_t containedStrOffset = 0;
+		size_t containedStrOffset = startOffset;
 		while ((containedStrOffset = StrLib::FindCi(XmlStr, tagContainsStr, containedStrOffset)) != string::npos)
 		{
 			const auto tagBegin = StrLib::FindReverse(XmlStr, '<', containedStrOffset++);
@@ -100,9 +99,9 @@ namespace Xml
 			const auto tagEnd = XmlStr.find('>', containedStrOffset);
 			if (tagEnd == string::npos)
 				return false;
-						
-			string closingTag = format("</{}>", elementName);
-			const auto closingTagOffset = StrLib::FindCi(XmlStr, tagContainsStr, tagEnd);
+
+			const auto closingTag = format("</{}>", elementName);
+			const auto closingTagOffset = StrLib::FindCi(XmlStr, closingTag, tagEnd);
 			if (closingTagOffset == string::npos)
 				return false;
 
@@ -110,14 +109,14 @@ namespace Xml
 			if (contentSize == 0)
 				return false;
 
-			outContentPosition.cx = tagEnd + 1;
-			outContentPosition.cy = contentSize;
+			outContent = span{ const_cast<char*>(XmlStr.data() + tagEnd + 1), contentSize};
+			outElementDataSpan.Offset = tagBegin;
+			outElementDataSpan.Size = (closingTagOffset + closingTag.size()) - tagBegin;
 			return true;
 		}
 
 		return false;
 	}
-
 
 	//tag must be "<tag attr="" />"
 	bool Document::GetTagAttribute(const string& tag, const string& attributeName, string& outAttributeValue)

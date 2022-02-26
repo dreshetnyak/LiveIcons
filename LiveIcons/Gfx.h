@@ -23,5 +23,6 @@ namespace Gfx
 	HBITMAP ToBitmap(CImage& sourceImage, LPSIZE bitmapSize);
 	bool SaveImage(HBITMAP bitmapHandle, const wstring& fileName, ImageFileType fileType);
 	bool GetEncoderClsid(const wstring& mimeType, CLSID* outClsid);
-	const wchar_t* GetMimeType(ImageFileType fileType);	
+	const wchar_t* GetMimeType(ImageFileType fileType);
+	bool ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize);
 }

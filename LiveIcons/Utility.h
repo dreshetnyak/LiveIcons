@@ -8,7 +8,8 @@ namespace Utility
 {
 	using namespace std;
 
-	wstring GetLastErrorStr();
+	wstring GetLastErrorMessage();
+	wstring GetLastErrorMessage(DWORD lastErrorCode);
 	string ToAbsolutePath(const string& currentFilePath, const string& relativeFilePath);
 
 	inline char FromHex(const char ch) { return static_cast<char>(isdigit(ch) ? ch - 0x30 : tolower(ch) - 'a' + 10); }
@@ -19,9 +20,14 @@ namespace Utility
 	HRESULT GetIStreamFileName(IStream* stream, wstring& outFileName);
 	HRESULT GetFileExtension(const wstring& fileName, wstring& outFileExtension);
 	HRESULT GetIStreamFileSize(IStream* stream, ULONGLONG& outSize);
+	HRESULT GetIStreamFileNameAndSize(IStream* stream, ULONGLONG& outSize, wstring& outFileName);
 	HRESULT SeekToBeginning(IStream* stream);
 	HRESULT ReadIStream(IStream* stream, std::vector<char>& outFileContent);
+	HRESULT ReadIStream(IStream* stream, char* outFileContent, size_t fileSize);
+	HRESULT ReadIStream(IStream* stream, HANDLE outFileHandle);
 	HRESULT DecodeBase64(const string& base64Encoded, vector<char>& outDecoded);
+	HRESULT GetTempFileFullName(wstring& outTempFileName);
+	bool TryParseNumber(const string& numberStr, size_t& number);
 }
 
 struct DataSpan final
@@ -58,5 +64,6 @@ namespace Log
 
 	void WriteToFile(const string& filePath, const string& message);
 	void WriteFile(const string& filePath, const vector<char>& content);
+	void WriteFile(const string& filePath, const char* content, size_t size);
 	void Write(const string& message);
 }

@@ -103,9 +103,9 @@ namespace Gfx
 		return result;
 	}
 	
-	HRESULT LoadImageToHBitmap(const vector<char>& sourceImage, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize)
+	HRESULT LoadImageToHBitmap(const char* sourceImage, const size_t size, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize)
 	{
-		const Utility::DataIStream imageIStream{sourceImage};
+		const Utility::DataIStream imageIStream{ sourceImage, size };
 		const auto result = imageIStream.GetHResult();
 		return SUCCEEDED(result)
 			? WicCreate32BitsPerPixelHBitmap(imageIStream.GetIStream(), outBitmap, outAlphaType, imageSize)

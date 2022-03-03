@@ -90,6 +90,12 @@
     <ClInclude Include="ParserFb2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ParserMobi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RamFile.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp">
@@ -144,6 +150,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ParserFb2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParserMobi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RamFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

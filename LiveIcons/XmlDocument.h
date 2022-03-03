@@ -19,7 +19,7 @@ namespace Xml
 		[[nodiscard]] bool Empty() const { return XmlStr.empty(); }
 		[[nodiscard]] const string& GetString() const { return XmlStr; }
 
-		bool GetTag(const string& tagName, const size_t searchStartOffset, string& outTag) const;
+		bool GetTag(const string& tagName, const size_t searchStartOffset, size_t& outTagOffset, string& outTag) const;
 		bool GetTagThatContains(const string& containsStr, string& outTag) const;
 		bool GetTagThatContains(const string& tagName, const string& containsStr, string& outTag) const;
 		bool GetTagAttributeValue(const string& tagName, const string& containsStr, const string& attributeName, string& outAttributeValue) const;

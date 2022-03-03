@@ -17,6 +17,10 @@
 #include <functional>
 #include <new>
 #include <fstream>
+#include <corecrt_io.h>
+#include <io.h>
+#include <fcntl.h>
+#include <cstdio>
 #include <thumbcache.h> // For IThumbnailProvider.
 #include <wincodec.h>
 #include "framework.h"

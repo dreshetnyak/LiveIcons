@@ -4,7 +4,7 @@
 
 namespace Xml
 {
-	bool Document::GetTag(const string& tagName, const size_t searchStartOffset, string& outTag) const
+	bool Document::GetTag(const string& tagName, const size_t searchStartOffset, size_t& outTagOffset, string& outTag) const
 	{
 		const auto tagBegin = FindTagStart(tagName, searchStartOffset, true);
 		if (tagBegin == string::npos)
@@ -12,6 +12,7 @@ namespace Xml
 		const auto tagEnd = XmlStr.find('>', tagBegin);
 		if (tagEnd == string::npos)
 			return false;
+		outTagOffset = tagBegin;
 		outTag = XmlStr.substr(tagBegin, tagEnd - tagBegin + 1);
 		return true;
 	}

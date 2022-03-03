@@ -172,8 +172,9 @@ namespace Parser
 	bool Epub::GetCoverPathFromTagContainsCover(const Xml::Document& rootFileXml, string& outCoverFilePath)
 	{
 		string tag, hrefValue, idValue;
-		for (size_t offset = 0; rootFileXml.GetTag("item", offset, tag); offset += tag.size())
+		for (size_t offset = 0, tagOffset = 0; rootFileXml.GetTag("item", offset, tagOffset, tag); offset += tag.size())
 		{
+			offset = tagOffset;
 			if (!Xml::Document::GetTagAttribute(tag, "href", hrefValue) ||
 				StrLib::FindCi(hrefValue, string{ "cover" }, 0) == string::npos &&
 				(!Xml::Document::GetTagAttribute(tag, "id", idValue) || StrLib::FindCi(idValue, string{ "cover" }, 0) == string::npos))
@@ -284,7 +285,7 @@ namespace Parser
 		for (const auto imagePosition : images)
 		{
 			zip.SetCurrent(*imagePosition);
-			if (!zip.ReadCurrent(imageFileData) || Gfx::LoadImageToHBitmap(imageFileData, coverBitmap, coverBitmapAlpha, imageSize) != S_OK )
+			if (!zip.ReadCurrent(imageFileData) || Gfx::LoadImageToHBitmap(imageFileData.data(), imageFileData.size(), coverBitmap, coverBitmapAlpha, imageSize) != S_OK )
 				continue;
 			if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
 				return true;
@@ -298,7 +299,7 @@ namespace Parser
 	HRESULT Epub::GetCoverBitmap(const vector<char>& imageFileData, HBITMAP& coverBitmap, WTS_ALPHATYPE& coverBitmapAlpha)
 	{
 		SIZE imageSize{ 0, 0 };
-		if (const auto result = Gfx::LoadImageToHBitmap(imageFileData, coverBitmap, coverBitmapAlpha, imageSize); FAILED(result))
+		if (const auto result = Gfx::LoadImageToHBitmap(imageFileData.data(), imageFileData.size(), coverBitmap, coverBitmapAlpha, imageSize); FAILED(result))
 			return result;
 		if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
 			return S_OK;
@@ -345,8 +346,9 @@ namespace Parser
 
 		const auto containerXml = Xml::Document{ string{ fileContent } };
 
+		size_t tagOffset{};
 		string rootFileTag;
-		if (!containerXml.GetTag("rootfile", 0, rootFileTag))
+		if (!containerXml.GetTag("rootfile", 0, tagOffset, rootFileTag))
 			return false;
 
 		string fullPath;

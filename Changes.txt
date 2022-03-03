@@ -1,3 +1,9 @@
+LiveIcons v0.8 alpha: 2022-03-03
+New. Now it supports MOBI, AZW and AZW3 formats.
+
+LiveIcons v0.7 alpha: 2022-03-01
+Wip. Adding MOBI format support.
+
 LiveIcons v0.6 alpha: 2022-02-26
 New. FB2 cover extractor added.
 Release is not compilable, the last commit from my other PC did not get all the changes.

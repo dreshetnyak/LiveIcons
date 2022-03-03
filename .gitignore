@@ -3,5 +3,7 @@
 ################################################################################
 
 /LiveIcons/x64
+/LiveIcons/Debug
+/LiveIcons/Release
 /x64
 /.vs/LiveIcons/v17

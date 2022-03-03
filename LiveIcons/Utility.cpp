@@ -4,10 +4,15 @@
 
 namespace Utility
 {
-    wstring GetLastErrorStr()
+    wstring GetLastErrorMessage()
+    {
+        return GetLastErrorMessage(GetLastError());
+    }
+
+    wstring GetLastErrorMessage(const DWORD lastErrorCode)
     {
         LPWSTR errorMessageBuffer = nullptr;
-        if (!FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(),
+        if (!FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, nullptr, lastErrorCode,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&errorMessageBuffer), 0, nullptr) ||
             errorMessageBuffer == nullptr)
             return wstring{};
@@ -103,6 +108,18 @@ namespace Utility
         return S_OK;
     }
 
+    HRESULT GetIStreamFileNameAndSize(IStream* stream, ULONGLONG& outSize, wstring& outFileName)
+    {
+        if (stream == nullptr)
+            return ERROR_BAD_ARGUMENTS;
+        STATSTG streamStat{};
+        if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
+            return result;
+        outSize = streamStat.cbSize.QuadPart;
+        outFileName = std::wstring{ streamStat.pwcsName };
+        return S_OK;
+    }
+
     HRESULT SeekToBeginning(IStream* stream)
     {
         constexpr LARGE_INTEGER position{ { 0, 0 } };
@@ -116,16 +133,41 @@ namespace Utility
         if (const auto result = GetIStreamFileSize(stream, size); FAILED(result))
             return result;
         outFileContent.resize(size);
-        
+        return ReadIStream(stream, outFileContent.data(), outFileContent.size());
+    }
+
+    HRESULT ReadIStream(IStream* stream, char* outFileContent, const size_t fileSize)
+    {
         if (const auto result = SeekToBeginning(stream); FAILED(result))
             return result;
 
         ULONG bytesRead{};
-        if (const auto result = stream->Read(outFileContent.data(), static_cast<ULONG>(size), &bytesRead); FAILED(result))
+        if (const auto result = stream->Read(outFileContent, static_cast<ULONG>(fileSize), &bytesRead); FAILED(result))
             return result;
 
         static_cast<void>(SeekToBeginning(stream));
         return S_OK;
+    }
+
+    HRESULT ReadIStream(IStream* stream, const HANDLE outFileHandle)
+    {
+        ULONGLONG size{};
+        if (const auto result = GetIStreamFileSize(stream, size); FAILED(result))
+            return result;
+
+        std::vector<char> content{};
+        content.resize(size);
+        ULONG bytesRead{};
+        if (const auto result = stream->Read(content.data(), static_cast<ULONG>(size), &bytesRead); FAILED(result))
+            return result;
+
+        DWORD bytesWritten;
+        if (!WriteFile(outFileHandle, content.data(), bytesRead, &bytesWritten, nullptr))
+            return HRESULT_FROM_WIN32(GetLastError());
+
+        return SetFilePointer(outFileHandle, 0, nullptr, FILE_BEGIN) != INVALID_SET_FILE_POINTER
+            ? S_OK
+            : HRESULT_FROM_WIN32(GetLastError());
     }
 
     HRESULT DecodeBase64(const string& base64Encoded, vector<char>& outDecoded)
@@ -162,6 +204,34 @@ namespace Utility
             ? S_OK
             : E_FAIL;
     }
+
+    HRESULT GetTempFileFullName(wstring& outTempFileName)
+    {
+        const auto pathSize = GetTempPath(0, nullptr);
+        const unique_ptr<TCHAR> path{ new TCHAR[pathSize] };
+        if (const auto getPathResult = GetTempPath(pathSize, path.get()); getPathResult == 0 || getPathResult > pathSize)
+            return HRESULT_FROM_WIN32(GetLastError());
+
+        const unique_ptr<TCHAR> fullFileName{ new TCHAR[MAX_PATH + 1] };
+        if (GetTempFileName(path.get(), L"ram", 1, fullFileName.get()) == 0)
+            return HRESULT_FROM_WIN32(GetLastError());
+
+        outTempFileName.assign(fullFileName.get());
+        return S_OK;
+    }
+
+    bool TryParseNumber(const string& numberStr, size_t& number)
+    {
+        try
+        {
+            number = stoull(numberStr);
+            return true;
+        }
+        catch (...)
+        {
+	        return false;
+        }
+    }
 }
 
 namespace Log
@@ -189,14 +259,18 @@ namespace Log
         file.close();
         LogFileLock.unlock();
     }
-
-
+    
     void WriteFile(const string& filePath, const vector<char>& content)
     {
-        ofstream file{ filePath, ios::out | ios::app | ios::binary };
+        WriteFile(filePath, content.data(), static_cast<long long>(content.size()));
+    }
+
+    void WriteFile(const string& filePath, const char* content, const size_t size)
+    {
+        ofstream file{ filePath, ios::out | ios::trunc | ios::binary };
         if (file.fail())
-	        return;
-        file.write(content.data(), content.size());
+            return;
+        file.write(content, static_cast<long long>(size));
         file.close();
     }
 }

@@ -48,8 +48,9 @@ namespace Parser
 		if (!xmlFile.GetElementContent("coverpage", 0, coverPageElementContentStr) || coverPageElementContentStr.empty())
 			return false;
 
+		size_t tagOffset{};
 		string imageTag{};
-		if (const Xml::Document coverPageElementContent{ coverPageElementContentStr }; !coverPageElementContent.GetTag("image", 0, imageTag))
+		if (const Xml::Document coverPageElementContent{ coverPageElementContentStr }; !coverPageElementContent.GetTag("image", 0, tagOffset, imageTag))
 			return false;
 
 		string coverHref{};		
@@ -94,7 +95,7 @@ namespace Parser
 			return false;
 
 		SIZE imageSize{};
-		if (FAILED(Gfx::LoadImageToHBitmap(image, outBitmap, outAlphaType, imageSize)))
+		if (FAILED(Gfx::LoadImageToHBitmap(image.data(), image.size(), outBitmap, outAlphaType, imageSize)))
 			return false;
 
 		if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))

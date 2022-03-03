@@ -18,7 +18,7 @@ namespace Gfx
 
 	enum class ImageFileType { Bmp, Png, Jpg };
 
-	HRESULT LoadImageToHBitmap(const vector<char>& sourceImage, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize);
+	HRESULT LoadImageToHBitmap(const char* sourceImage, size_t size, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize);
 
 	HBITMAP ToBitmap(CImage& sourceImage, LPSIZE bitmapSize);
 	bool SaveImage(HBITMAP bitmapHandle, const wstring& fileName, ImageFileType fileType);

@@ -12,7 +12,7 @@ namespace Utility
 		IStream* Stream{};
 
 	public:
-		explicit DataIStream(const vector<char>& data);
+		explicit DataIStream(const char* data, size_t size);
 		~DataIStream();
 
 		[[nodiscard]] HRESULT GetHResult() const { return Result; }

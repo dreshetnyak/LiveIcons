@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "LiveIcons.h"
+#include "ParserChm.h"
 #include "ParserFb2.h"
 #include "ParserMobi.h"
 #include "Utility.h"
@@ -9,7 +10,8 @@ std::vector<std::shared_ptr<Parser::Base>> LiveIcons::Parsers
 {
 	std::make_shared<Parser::Epub>(Parser::Epub{}),
 	std::make_shared<Parser::Fb2>(Parser::Fb2{}),
-	std::make_shared<Parser::Mobi>(Parser::Mobi{})
+	std::make_shared<Parser::Mobi>(Parser::Mobi{}),
+	std::make_shared<Parser::Chm>(Parser::Chm{})
 };
 
 LiveIcons::LiveIcons()

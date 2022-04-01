@@ -72,19 +72,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)chmlib\src;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)chmlib\src;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)chmlib\src;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)zlib\contrib\minizip;$(SolutionDir)zlib;$(SolutionDir)chmlib\src;$(SolutionDir)libmobi\src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -178,6 +178,7 @@
     <ClInclude Include="LiveIcons.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="ParserBase.h" />
+    <ClInclude Include="ParserChm.h" />
     <ClInclude Include="ParserEpub.h" />
     <ClInclude Include="ParserFb2.h" />
     <ClInclude Include="ParserMobi.h" />
@@ -202,6 +203,7 @@
     <ClCompile Include="DataIStream.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="ParserBase.cpp" />
+    <ClCompile Include="ParserChm.cpp" />
     <ClCompile Include="ParserEpub.cpp" />
     <ClCompile Include="GlobalMem.cpp" />
     <ClCompile Include="Gfx.cpp" />
@@ -227,6 +229,9 @@
     <None Include="LiveIcons.def" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\chmlib\chmlib.vcxproj">
+      <Project>{0bc6ae4c-eb98-4e48-92d1-b026195abb65}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\libmobi\libmobi.vcxproj">
       <Project>{3bd297ee-ee85-44a8-8b5a-be57cd00d61a}</Project>
     </ProjectReference>

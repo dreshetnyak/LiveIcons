@@ -8,9 +8,10 @@ namespace StrLib
 {
     using namespace std;
 
-	string ToString(const wstring& wideString);
+    string ToString(const wstring& wideString);
     wstring ToWstring(const string& multiByteString);
     wstring ToWstring(LPCCH multiByteString, int size);
+    void UnEscapeXml(string& str);
 
     inline int ToLower(const int ch) { return (ch > 64 && ch < 91) ? (ch + 32) : ch; }
 
@@ -36,33 +37,8 @@ namespace StrLib
         return true;
     }
 
-    template<class T>
-    bool EqualsCiOneOf(const basic_string<T>& str, const vector<basic_string<T>> strings)
-    {
-        const auto strSize = str.size();
-        for (const auto& oneOfStrings : strings)
-        {
-            if (oneOfStrings.size() != strSize)
-                continue;
-
-            auto stringsEqual = true;
-            for (auto index = 0; index < strSize; ++index)
-            {
-                if (EqualsCi(str[index], oneOfStrings[index]))
-                    continue;
-                stringsEqual = false;
-                break;
-            }
-
-        	if (stringsEqual)
-                return true;
-        }
-
-        return false;
-    }
-    
     template<typename T>
-    size_t FindCi(const basic_string<T> str, const basic_string<T> findStr, const size_t offset)
+    size_t FindCi(const basic_string<T>& str, const basic_string<T>& findStr, const size_t offset)
     {
         const auto strSize = str.size();
         if (strSize == 0)
@@ -91,7 +67,7 @@ namespace StrLib
     }
 
     template<typename T>
-    size_t FindReverse(const basic_string<T> str, const T ch, size_t offset = basic_string<T>::npos)
+    size_t FindReverse(const basic_string<T>& str, const T ch, size_t offset = basic_string<T>::npos)
     {
         const auto strSize = str.size();
         if (strSize == 0)
@@ -108,8 +84,46 @@ namespace StrLib
         return basic_string<T>::npos;
     }
 
+    template<class T>
+    bool EqualsCiOneOf(const basic_string<T>& str, const vector<basic_string<T>> strings)
+    {
+        const auto strSize = str.size();
+        for (const auto& oneOfStrings : strings)
+        {
+            if (oneOfStrings.size() != strSize)
+                continue;
+
+            auto stringsEqual = true;
+            for (auto index = 0; index < strSize; ++index)
+            {
+                if (EqualsCi(str[index], oneOfStrings[index]))
+                    continue;
+                stringsEqual = false;
+                break;
+            }
+
+            if (stringsEqual)
+                return true;
+        }
+
+        return false;
+    }
+
+    template<class T>
+    bool ContainsCiOneOf(const basic_string<T>& str, const vector<basic_string<T>> strings)
+    {
+        const auto strSize = str.size();
+        for (const auto& oneOfStrings : strings)
+        {
+            if (FindCi(str, oneOfStrings, 0) != basic_string<T>::npos)
+                return true;
+        }
+
+        return false;
+    }
+
     template<typename T>
-    bool StartsWith(const basic_string<T> str, const basic_string<T> strStart, size_t offset)
+    bool StartsWith(const basic_string<T> str, const basic_string<T>& strStart, size_t offset)
     {
         const auto strSize = str.size();
         if (strSize == 0)
@@ -128,7 +142,7 @@ namespace StrLib
     }
 
     template<typename T>
-    bool EndsWith(const basic_string<T> str, const basic_string<T> strEnd)
+    bool EndsWith(const basic_string<T> str, const basic_string<T>& strEnd)
     {
         const auto strSize = str.size();
         if (strSize == 0)
@@ -159,7 +173,80 @@ namespace StrLib
     }
 
     template<typename T>
-    vector<basic_string<T>> Split(const basic_string<T> str, T splitCh, const bool preserveEmpty = false)
+    void Remove(basic_string<T>& str, const size_t offset, const size_t count)
+    {
+        auto readOffset = offset + count;
+        const auto strLength = str.length();
+        if (readOffset < strLength)
+        {
+            memcpy(static_cast<void*>(&str[offset]), static_cast<void*>(&str[readOffset]), (strLength - readOffset) * sizeof T);
+            str.resize(strLength - count);
+        }
+        else
+            str.resize(offset);
+    }
+
+    template<typename T>
+    void ReplaceAll(basic_string<T>& str, const basic_string<T>& from, const basic_string<T>& to)
+    {
+        if (from.empty())
+            return;
+
+        size_t offset{ 0 };
+        while ((offset = FindCi(str, from, offset)) != basic_string<T>::npos)
+        {
+            str.replace(offset, from.length(), to);
+            offset += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+        }
+    }
+
+    template<typename T>
+    void ReplaceAll(basic_string<T>& str, const T from, const T to)
+    {
+        const auto strSize = str.size();
+        for (size_t index{ 0 }; index < strSize; ++index)
+        {
+            if (str[index] == from)
+                str[index] = to;
+        }
+    }
+
+    template<typename T>
+    void TrimStartCi(basic_string<T>& str, const basic_string<T>& trim)
+    {
+        const auto strLength = str.length();
+        const auto trimLength = trim.length();
+        for (size_t offset{ 0 }; offset < strLength; offset += trimLength)
+        {
+            if (StartsWith(str, trim, offset))
+                continue;
+            if (offset == 0)
+                return;
+            Remove(str, 0, offset);
+            return;
+        }
+
+        str.resize(static_cast<size_t>(0));
+    }
+
+    template<typename T>
+    void TrimStartCi(basic_string<T>& str, const T ch)
+    {
+        for (size_t index{ 0 }; index < str.length(); ++index)
+        {
+            if (EqualsCi(str[index], ch))
+                continue;
+            if (index == 0)
+                return;
+            Remove(str, 0, index);
+            return;
+        }
+
+        str.resize(static_cast<size_t>(0));
+    }
+
+    template<typename T>
+    vector<basic_string<T>> Split(const basic_string<T>& str, T splitCh, const bool preserveEmpty = false)
     {
         vector<basic_string<T>> splitStr;
         const auto strSize = str.size();
@@ -177,7 +264,7 @@ namespace StrLib
     }
 
     template<typename T>
-    basic_string<T> Join(const vector<basic_string<T>> src, const basic_string<T> divider)
+    basic_string<T> Join(const vector<basic_string<T>>& src, const basic_string<T> divider)
     {
         const auto srcSize = src.size();
         if (srcSize == 0)
@@ -193,7 +280,7 @@ namespace StrLib
     }
 
     template<typename T>
-    basic_string<T> PreserveLeftOfLast(const basic_string<T> src, const T ch)
+    basic_string<T> PreserveLeftOfLast(const basic_string<T>& src, const T ch) //TODO BUG!!! ch is not used
     {
         const auto strEndOffset = src.find_last_of('/');
         return strEndOffset != basic_string<T>::npos && strEndOffset != 0
@@ -202,16 +289,16 @@ namespace StrLib
     }
 
     template<typename T>
-    void Filter(basic_string<T> src, const basic_string<T> removeChars)
+    void Filter(basic_string<T> src, const basic_string<T>& removeChars)
     {
         size_t writeIndex{ 0 };
         const auto srcSize = src.size();
-	    for (size_t readIndex = 0; readIndex < srcSize; ++readIndex)
-	    {
+        for (size_t readIndex = 0; readIndex < srcSize; ++readIndex)
+        {
             const auto ch = src[readIndex];
             if (removeChars.find_first_of(ch) == basic_string<T>::npos)
-	            src[writeIndex++] = ch;
-	    }
+                src[writeIndex++] = ch;
+        }
 
         if (writeIndex != srcSize)
             src.resize(writeIndex);

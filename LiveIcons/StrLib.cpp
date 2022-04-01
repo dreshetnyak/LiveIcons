@@ -32,4 +32,19 @@ namespace StrLib
         MultiByteToWideChar(CP_UTF8, 0, &multiByteString[0], size, &wideString[0], sizeNeeded);
         return wideString;
     }
+
+    void UnEscapeXml(string& str)
+    {
+        static const vector escaping
+        {
+            pair<string, string>("&amp;", "&"),
+            pair<string, string>("&apos;", "\'"),
+            pair<string, string>("&quot;", "\""),
+            pair<string, string>("&lt;", "<"),
+            pair<string, string>("&gt;", ">")
+        };
+
+        for (const auto& [from, to] : escaping)
+            ReplaceAll(str, from, to);
+    }
 }

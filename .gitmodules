@@ -4,3 +4,6 @@
 [submodule "libmobi"]
 	path = libmobi
 	url = https://github.com/dreshetnyak/libmobi.git
+[submodule "chmlib"]
+	path = chmlib
+	url = https://github.com/dreshetnyak/chmlib.git

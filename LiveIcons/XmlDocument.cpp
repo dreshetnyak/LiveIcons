@@ -17,6 +17,29 @@ namespace Xml
 		return true;
 	}
 
+	bool Document::GetTag(const string& tagName, string& outTag, const function<bool(const string&)>& match) const
+	{
+		for (size_t tagSearchOffset = 0, tagOffset; GetTag(tagName, tagSearchOffset, tagOffset, outTag); tagSearchOffset += outTag.size())
+		{
+			if (match(outTag))
+				return true;
+		}
+
+		return false;
+	}
+
+	bool Document::ContainsTag(const string& tagName, const function<bool(const string&)>& match) const
+	{
+		string tag{};
+		for (size_t tagSearchOffset = 0, tagOffset; GetTag(tagName, tagSearchOffset, tagOffset, tag); tagSearchOffset += tag.size())
+		{
+			if (match(tag))
+				return true;
+		}
+
+		return false;
+	}
+
 	bool Document::GetTagThatContains(const string& tagName, const string& containsStr, string& outTag) const
 	{
 		size_t containedStrOffset = 0;
@@ -61,7 +84,7 @@ namespace Xml
 		return true;
 	}
 
-	bool Document::GetElementContent(const string& elementName, const size_t offset, string& outElementContent) const
+	bool Document::GetElementContent(const string& elementName, const size_t offset, string& outElementContent, size_t* outContentOffset) const
 	{
 		const auto openingTagBegin = FindTagStart(elementName, offset, true);
 		if (openingTagBegin == string::npos)
@@ -79,6 +102,9 @@ namespace Xml
 			return false;
 
 		outElementContent = XmlStr.substr(contentBegin, closingTagBegin - contentBegin);
+		if (outContentOffset != nullptr)
+			*outContentOffset = contentBegin;
+
 		return true;
 	}
 
@@ -165,14 +191,18 @@ namespace Xml
 		if (attributeValueBegin >= tagSize)
 			return false;
 		const auto attributeValueQuote = tag[attributeValueBegin];
-		attributeValueBegin++; //Skip quote
+		const auto hasQuote = attributeValueQuote == '\'' || attributeValueQuote == '\"';
+		if (hasQuote)
+			attributeValueBegin++; //Skip quote
 		if (attributeValueBegin >= tagSize)
 			return false;
-		const auto attributeValueEnd = tag.find(attributeValueQuote, attributeValueBegin);
+		const auto attributeValueEnd = hasQuote
+			? tag.find(attributeValueQuote, attributeValueBegin)
+			: tag.find_first_of(" />", attributeValueBegin);
 		if (attributeValueEnd == string::npos)
 			return false;
 		outAttributeValue = tag.substr(attributeValueBegin, attributeValueEnd - attributeValueBegin);
-		outAttributeBeginOffset = attributeValueEnd + 1;
+		outAttributeBeginOffset = hasQuote ? attributeValueEnd + 1 : attributeValueEnd;
 		return true;
 	}
 

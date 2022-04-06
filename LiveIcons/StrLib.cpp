@@ -47,4 +47,20 @@ namespace StrLib
         for (const auto& [from, to] : escaping)
             ReplaceAll(str, from, to);
     }
+    
+    void TrimStart(string& str)
+    {
+        str.erase(str.begin(), ranges::find_if(str, [](const char ch) { return ch != ' ' && ch != '\r' && ch != '\n' && ch != '\t' && ch != '\v' && ch != '\f'; }));
+    }
+
+    void TrimEnd(string& str)
+    {
+        str.erase(std::find_if(str.rbegin(), str.rend(), [](const char ch) { return ch != ' ' && ch != '\r' && ch != '\n' && ch != '\t' && ch != '\v' && ch != '\f'; }).base(), str.end());
+    }
+
+    void Trim(string& str)
+    {
+        TrimEnd(str);
+        TrimStart(str);
+    }
 }

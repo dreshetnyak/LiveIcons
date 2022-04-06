@@ -39,6 +39,12 @@ namespace Utility
         return StrLib::Join<char>(absolutePathSplit, "/");
     }
 
+    string TrimPathExtension(const string& path)
+    {
+        const auto extensionOffset = path.find_last_of('.');
+        return extensionOffset != string::npos ? path.substr(0, extensionOffset) : path;
+    }
+
     string UrlDecode(const string& urlEncoded)
     {
 	    string decoded{};

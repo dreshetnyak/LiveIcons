@@ -11,6 +11,7 @@ namespace Utility
 	wstring GetLastErrorMessage();
 	wstring GetLastErrorMessage(DWORD lastErrorCode);
 	string ToAbsolutePath(const string& currentFilePath, const string& relativeFilePath);
+	string TrimPathExtension(const string& path);
 
 	inline char FromHex(const char ch) { return static_cast<char>(isdigit(ch) ? ch - 0x30 : tolower(ch) - 'a' + 10); }
     inline bool IsHex(const char ch) { return ch > 47 && ch < 58 || ch > 64 && ch < 71 || ch > 96 && ch < 103; }

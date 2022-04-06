@@ -12,6 +12,9 @@ namespace StrLib
     wstring ToWstring(const string& multiByteString);
     wstring ToWstring(LPCCH multiByteString, int size);
     void UnEscapeXml(string& str);
+    void TrimStart(string& str);
+    void TrimEnd(string& str);
+    void Trim(string& str);
 
     inline int ToLower(const int ch) { return (ch > 64 && ch < 91) ? (ch + 32) : ch; }
 
@@ -243,6 +246,25 @@ namespace StrLib
         }
 
         str.resize(static_cast<size_t>(0));
+    }
+
+    template<typename T>
+    void TrimStart(basic_string<T>& str)
+    {
+        str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](T ch) { return !std::isspace(ch); }));
+    }
+
+    template<typename T>
+    void TrimEnd(basic_string<T>& str)
+    {
+        str.erase(std::find_if(str.rbegin(), str.rend(), [](T ch) { return !std::isspace(ch); }).base(), str.end());
+    }
+
+    template<typename T>
+    void Trim(basic_string<T>& str)
+    {
+        TrimEnd(str);
+        TrimStart(str);
     }
 
     template<typename T>

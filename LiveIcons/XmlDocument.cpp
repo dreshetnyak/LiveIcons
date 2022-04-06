@@ -190,6 +190,8 @@ namespace Xml
 		auto attributeValueBegin = attributeNameEnd + 1;
 		if (attributeValueBegin >= tagSize)
 			return false;
+		if (attributeValueBegin = tag.find_first_not_of(" \r\n\t", attributeValueBegin); attributeValueBegin == string::npos)
+			return false;
 		const auto attributeValueQuote = tag[attributeValueBegin];
 		const auto hasQuote = attributeValueQuote == '\'' || attributeValueQuote == '\"';
 		if (hasQuote)
@@ -198,7 +200,7 @@ namespace Xml
 			return false;
 		const auto attributeValueEnd = hasQuote
 			? tag.find(attributeValueQuote, attributeValueBegin)
-			: tag.find_first_of(" />", attributeValueBegin);
+			: tag.find_first_of(" />\r\n\t", attributeValueBegin);
 		if (attributeValueEnd == string::npos)
 			return false;
 		outAttributeValue = tag.substr(attributeValueBegin, attributeValueEnd - attributeValueBegin);
@@ -212,22 +214,23 @@ namespace Xml
 		const auto tagNameSize = findTagName.size();
 		if (tagNameSize > xmlStrSize - searchStartOffset)
 			return string::npos;
-
-		const auto tagNameOffset = isOpeningTag ? 1 : 2;
+		
 		const auto indexLimit = xmlStrSize - tagNameSize;
-		for (auto offset = searchStartOffset; offset < indexLimit; ++offset)
+		for (size_t offset = searchStartOffset, tagStartOffset; offset < indexLimit; ++offset)
 		{
-			offset = isOpeningTag
-				? XmlStr.find('<', offset)
-				: XmlStr.find("</", offset);
-			if (offset == string::npos)
+			if ((offset = tagStartOffset = XmlStr.find('<', offset)) == string::npos || ++offset >= indexLimit)
 				break;
+			const auto foundClosingTag = XmlStr[offset] == '/';
+			if (isOpeningTag && foundClosingTag || !isOpeningTag && !foundClosingTag)
+				continue;
+			if (foundClosingTag)
+				++offset;
 			string tagName;
-			const auto tagEndOffset = ReadTagName(offset + tagNameOffset, tagName);
+			const auto tagEndOffset = ReadTagName(offset, tagName);
 			if (tagEndOffset == string::npos)
 				break;
 			if (StrLib::EqualsCi(tagName, findTagName))
-				return offset;
+				return tagStartOffset;
 			offset = tagEndOffset;
 		}
 
@@ -238,7 +241,7 @@ namespace Xml
 	{
 		if (tagNameOffset >= XmlStr.size())
 			return string::npos;
-		const auto tagEnd = XmlStr.find_first_of(" />", tagNameOffset);
+		const auto tagEnd = XmlStr.find_first_of(" />\r\n\t", tagNameOffset);
 		if (tagEnd == string::npos)
 			return string::npos;
 		outTagName = XmlStr.substr(tagNameOffset, tagEnd - tagNameOffset);

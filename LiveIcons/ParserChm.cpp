@@ -41,11 +41,14 @@ namespace Parser
 	    "content.htm",
         "index.html",
         "index.htm",
+        "start.html",
+        "start.htm"
     };
 
     vector<string> Chm::CoverImageFileEnds
     {
         "_xs",
+        "_cover",
         "/cover",
         "/cover_01"
     };

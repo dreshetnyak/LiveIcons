@@ -104,7 +104,7 @@ namespace Parser
 			return E_FAIL;
 
 		size_t rawDataSize = mobiData->rh->text_length;
-		const unique_ptr<char> rawData{ new (nothrow) char[rawDataSize + 1] };
+		const unique_ptr<char[]> rawData{ new (nothrow) char[rawDataSize + 1] };
 		if (rawData == nullptr)
 			return E_OUTOFMEMORY;
 

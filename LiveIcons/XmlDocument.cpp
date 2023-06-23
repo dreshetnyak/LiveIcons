@@ -221,7 +221,7 @@ namespace Xml
 			if ((offset = tagStartOffset = XmlStr.find('<', offset)) == string::npos || ++offset >= indexLimit)
 				break;
 			const auto foundClosingTag = XmlStr[offset] == '/';
-			if (isOpeningTag && foundClosingTag || !isOpeningTag && !foundClosingTag)
+			if (isOpeningTag == foundClosingTag)
 				continue;
 			if (foundClosingTag)
 				++offset;

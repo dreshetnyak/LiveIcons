@@ -32,7 +32,7 @@ namespace Parser
 	Result Fb2::Parse(const vector<char>& fileContent) const
 	{
 		vector<char> outImage{};
-		const Xml::Document xmlFile{ string{fileContent} };
+		const Xml::Document xmlFile{ string{fileContent.begin(), fileContent.end()} };
 
 		HBITMAP coverBitmap{ nullptr };
 		WTS_ALPHATYPE coverBitmapAlpha{};
@@ -87,7 +87,7 @@ namespace Parser
 
 	bool Fb2::GetCoverImage(const span<char>& base64EncodedImageSpan, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType) const
 	{
-		const string base64EncodedImage{ base64EncodedImageSpan };
+		const string base64EncodedImage{ base64EncodedImageSpan.begin(), base64EncodedImageSpan.end() };
 		StrLib::Filter<char>(base64EncodedImage, " \r\n\t");
 
 		vector<char> image{};

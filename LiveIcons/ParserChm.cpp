@@ -144,7 +144,7 @@ namespace Parser
         vector<char> hhcFileContent{};
         for (int fileIndex{ 0 }; TryGetFileEndsWithContent(chmFile, fileIndex, hhcFileContent, hhcExtension); ++fileIndex)
         {
-            const Xml::Document hhcXml{ string {hhcFileContent} };
+            const Xml::Document hhcXml{ string {hhcFileContent.begin(), hhcFileContent.end()} };
             hhcFileContent.clear();
             if (TryGetPathFromHhcObjects(chmFile, hhcXml, outBitmap, outAlphaType))
                 return true;
@@ -238,7 +238,7 @@ namespace Parser
         if (!TryGetFileEndsWithContent(chmFile, fileIndex, xmlFileContent, htmlFilePath))
             return false;
 
-        const Xml::Document xml{ string {xmlFileContent} };
+        const Xml::Document xml{ string {xmlFileContent.begin(), xmlFileContent.end()} };
         xmlFileContent.clear();
 
         return TryGetCoverFromImageTag(chmFile, xml, outBitmap, outAlphaType);
@@ -301,7 +301,7 @@ namespace Parser
                 if (!TryGetFileEndsWithContent(chmFile, fileIndex, htmlFileContent, endsWith))
                     continue;
 
-                const Xml::Document html{ string {htmlFileContent} };
+                const Xml::Document html{ string {htmlFileContent.begin(), htmlFileContent.end()} };
                 htmlFileContent.clear();
 
                 if (TryGetCoverFromImageTag(chmFile, html, outBitmap, outAlphaType))

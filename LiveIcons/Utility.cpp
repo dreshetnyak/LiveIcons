@@ -75,7 +75,7 @@ namespace Utility
     {
         std::ifstream fileStream{ fileFullName, ios::in | ios::binary | ios::ate };
         if (!fileStream.is_open())
-            return ERROR_FILE_NOT_FOUND;
+            return E_FAIL;
         outFileContent.reserve(fileStream.tellg());
         fileStream.seekg(0);
         std::copy(std::istream_iterator<char>(fileStream), std::istream_iterator<char>(), std::back_inserter(outFileContent));
@@ -86,7 +86,7 @@ namespace Utility
     HRESULT GetIStreamFileName(IStream* stream, wstring& outFileName)
     {
         if (stream == nullptr)
-            return ERROR_BAD_ARGUMENTS;
+            return E_FAIL;
         STATSTG streamStat{};
         if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
             return result;
@@ -106,7 +106,7 @@ namespace Utility
     HRESULT GetIStreamFileSize(IStream* stream, ULONGLONG& outSize)
     {
         if (stream == nullptr)
-            return ERROR_BAD_ARGUMENTS;
+            return E_FAIL;
         STATSTG streamStat{};
         if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
             return result;
@@ -117,7 +117,7 @@ namespace Utility
     HRESULT GetIStreamFileNameAndSize(IStream* stream, ULONGLONG& outSize, wstring& outFileName)
     {
         if (stream == nullptr)
-            return ERROR_BAD_ARGUMENTS;
+            return E_FAIL;
         STATSTG streamStat{};
         if (const auto result = stream->Stat(&streamStat, STATFLAG_DEFAULT); FAILED(result))
             return result;
@@ -214,11 +214,11 @@ namespace Utility
     HRESULT GetTempFileFullName(wstring& outTempFileName)
     {
         const auto pathSize = GetTempPath(0, nullptr);
-        const unique_ptr<TCHAR> path{ new TCHAR[pathSize] };
+        const unique_ptr<TCHAR[]> path{ new TCHAR[pathSize] };
         if (const auto getPathResult = GetTempPath(pathSize, path.get()); getPathResult == 0 || getPathResult > pathSize)
             return HRESULT_FROM_WIN32(GetLastError());
 
-        const unique_ptr<TCHAR> fullFileName{ new TCHAR[MAX_PATH + 1] };
+        const unique_ptr<TCHAR[]> fullFileName{ new TCHAR[MAX_PATH + 1] };
         if (GetTempFileName(path.get(), L"ram", 1, fullFileName.get()) == 0)
             return HRESULT_FROM_WIN32(GetLastError());
 

@@ -146,7 +146,7 @@ namespace Gfx
 		if (encodersSize == 0)
 			return false;
 
-		const unique_ptr<char> imageCodecInfo{ new char[encodersSize] };
+		const unique_ptr<char[]> imageCodecInfo{ new char[encodersSize] };
 		if (imageCodecInfo == nullptr)
 			return false;
 		const auto imageCodecInfoPtr = reinterpret_cast<ImageCodecInfo*>(imageCodecInfo.get());

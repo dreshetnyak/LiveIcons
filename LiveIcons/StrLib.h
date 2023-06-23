@@ -182,7 +182,7 @@ namespace StrLib
         const auto strLength = str.length();
         if (readOffset < strLength)
         {
-            memcpy(static_cast<void*>(&str[offset]), static_cast<void*>(&str[readOffset]), (strLength - readOffset) * sizeof T);
+            memcpy(static_cast<void*>(&str[offset]), static_cast<void*>(&str[readOffset]), (strLength - readOffset) * sizeof(T));
             str.resize(strLength - count);
         }
         else

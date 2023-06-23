@@ -2,8 +2,6 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/LiveIcons/x64
-/LiveIcons/Debug
-/LiveIcons/Release
-/x64
-/.vs/LiveIcons/v17
+/.vs
+/bin
+/LiveIcons/obj

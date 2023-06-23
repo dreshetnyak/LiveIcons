@@ -78,7 +78,7 @@ namespace Parser
 
 		vector<char> rootFileContentData;
 		static_cast<void>(GetRootFileContent(epub, epub.RootFilePath, rootFileContentData));
-		epub.RootFileXml.reset(new Xml::Document{ string{ rootFileContentData } });
+		epub.RootFileXml.reset(new Xml::Document{ string{ rootFileContentData.begin(), rootFileContentData.end() } });
 		string title;
 		if (!rootFileContentData.empty())
 			epub.RootFileXml->GetElementContent("title", 0, title);
@@ -207,7 +207,7 @@ namespace Parser
 		vector<char> htmlFileContent;
 		if (!zip.ReadPath(htmlPath, htmlFileContent))
 			return false;
-		const auto html{ Xml::Document{string{htmlFileContent}} };
+		const auto html{ Xml::Document{string{htmlFileContent.begin(), htmlFileContent.end()}} };
 
 		string newPath;
 		for (const auto& [tagName, containsStr, pathAttributeName] : HtmlTagsThatMayContainCoverPath)
@@ -238,7 +238,7 @@ namespace Parser
 		if (!zip.ReadCurrent(ncxContent))
 			return false;
 
-		const auto ncx = Xml::Document{ string{ncxContent} };
+		const auto ncx = Xml::Document{ string{ncxContent.begin(), ncxContent.end()} };
 
 		string firstNavPoint;
 		if (!ncx.GetElementContent("navPoint", 0, firstNavPoint))
@@ -344,7 +344,7 @@ namespace Parser
 		if (!epub.Zip->ReadPath("META-INF/container.xml", fileContent))
 			return false;
 
-		const auto containerXml = Xml::Document{ string{ fileContent } };
+		const auto containerXml = Xml::Document{ string{ fileContent.begin(), fileContent.end() } };
 
 		size_t tagOffset{};
 		string rootFileTag;

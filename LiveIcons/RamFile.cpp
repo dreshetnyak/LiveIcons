@@ -5,7 +5,7 @@
 namespace Utility
 {
 	// ReSharper disable once CppPossiblyUninitializedMember
-	RamFile::RamFile(IStream* stream) : HResult(CreateFileHandleFromStream(stream))  // NOLINT(cppcoreguidelines-pro-type-member-init)
+	RamFile::RamFile(IStream* stream) : HResult(CreateFileHandleFromStream(stream)), RuntimeFileHandle(nullptr)
 	{ }
 
 	RamFile::~RamFile()

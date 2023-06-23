@@ -204,6 +204,7 @@
     <ClInclude Include="RamFile.h" />
     <ClInclude Include="ReferenceCounter.h" />
     <ClInclude Include="Registry.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Stopwatch.h" />
     <ClInclude Include="StrLib.h" />
     <ClInclude Include="Utility.h" />
@@ -259,6 +260,9 @@
     <ProjectReference Include="..\zlib\contrib\vstudio\vc14\zlibstat.vcxproj">
       <Project>{745dec58-ebb3-47a9-a9b8-4c6627c01bf8}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LiveIcons.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

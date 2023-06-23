@@ -2,6 +2,7 @@ LiveIcons v1.0: 2023-06-23
 New. Added support of CHM files.
 New. Updated the libmobi project to the latest.
 Fix. Updating VS broke the build, fixed the build, also changed many build settings.
+Fix. Some array deletions was done incorrectly, that could cause a crash.
 
 LiveIcons v0.8 alpha: 2022-03-03
 New. Now it supports MOBI, AZW and AZW3 formats.

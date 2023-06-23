@@ -254,6 +254,9 @@
     <ProjectReference Include="..\libmobi\msvc\libmobi.vcxproj">
       <Project>{a48f597c-adbc-499e-b282-0f8a2b1a4b5f}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\unrar\UnRARDll.vcxproj">
+      <Project>{e815c46c-36c4-499f-bbc2-e772c6b17971}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\zlib\contrib\vstudio\vc14\minizip.vcxproj">
       <Project>{48cdd9dc-e09f-4135-9c0c-4fe50c3c654b}</Project>
     </ProjectReference>

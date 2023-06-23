@@ -7,3 +7,6 @@
 [submodule "chmlib"]
 	path = chmlib
 	url = https://github.com/dreshetnyak/chmlib.git
+[submodule "unrar"]
+	path = unrar
+	url = https://github.com/dreshetnyak/unrar.git

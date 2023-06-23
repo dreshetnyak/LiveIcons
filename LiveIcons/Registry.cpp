@@ -32,9 +32,9 @@ namespace Registry
 
 	HRESULT SetEntries(const std::vector<Entry>& registryEntries)
 	{
-		for (auto entry = registryEntries.begin(); entry != registryEntries.end(); ++entry)
+		for (const auto& registryEntry : registryEntries)
 		{
-			if (const auto result = SetEntry(*entry); FAILED(result))
+			if (const auto result = SetEntry(registryEntry); FAILED(result))
 				return result;
 		}
 
@@ -44,11 +44,11 @@ namespace Registry
 	HRESULT DeleteRegistryPaths(const std::vector<PCWSTR>& paths)
 	{
 		constexpr auto fileNotFound = HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
-		for (auto path = paths.begin(); path != paths.end(); ++path)
+		for (const auto path : paths)
 		{
 			constexpr char emptyStr[]{ '\x0' };
-			Log::Write(std::format("Registry::DeleteRegistryPaths: Path: '{}'", *path != nullptr ? StrLib::ToString(*path) : emptyStr));
-			if (const auto result = HRESULT_FROM_WIN32(RegDeleteTreeW(HKEY_CURRENT_USER, *path)); result != fileNotFound && FAILED(result))
+			Log::Write(std::format("Registry::DeleteRegistryPaths: Path: '{}'", path != nullptr ? StrLib::ToString(path) : emptyStr));
+			if (const auto result = HRESULT_FROM_WIN32(RegDeleteTreeW(HKEY_CURRENT_USER, path)); result != fileNotFound && FAILED(result))
 				return result;
 		}
 

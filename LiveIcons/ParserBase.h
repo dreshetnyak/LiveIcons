@@ -50,8 +50,8 @@ namespace Parser
 	{
 	public:
 		virtual bool CanParse(const wstring& fileExtension);
-		virtual Result Parse(const wstring& fileName);
-		virtual Result Parse(IStream* stream);
+		virtual Result Parse(const wstring& fileName);			// Parse using the file name (Testing)
+		virtual Result Parse(IStream* stream);					// Parse Windows file bytes stream
 		virtual ~Base() = default;
 	};
 }

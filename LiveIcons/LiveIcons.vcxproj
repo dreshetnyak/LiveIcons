@@ -196,12 +196,14 @@
     <ClInclude Include="LiveIcons.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="ParserBase.h" />
+    <ClInclude Include="ParserCbr.h" />
     <ClInclude Include="ParserChm.h" />
     <ClInclude Include="ParserEpub.h" />
     <ClInclude Include="ParserFb2.h" />
     <ClInclude Include="ParserMobi.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="RamFile.h" />
+    <ClInclude Include="RarFile.h" />
     <ClInclude Include="ReferenceCounter.h" />
     <ClInclude Include="Registry.h" />
     <ClInclude Include="resource.h" />
@@ -222,6 +224,7 @@
     <ClCompile Include="DataIStream.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="ParserBase.cpp" />
+    <ClCompile Include="ParserCbr.cpp" />
     <ClCompile Include="ParserChm.cpp" />
     <ClCompile Include="ParserEpub.cpp" />
     <ClCompile Include="GlobalMem.cpp" />
@@ -236,6 +239,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="RamFile.cpp" />
+    <ClCompile Include="RarFile.cpp" />
     <ClCompile Include="Registry.cpp" />
     <ClCompile Include="StrLib.cpp" />
     <ClCompile Include="Utility.cpp" />

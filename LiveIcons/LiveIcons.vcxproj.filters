@@ -105,9 +105,6 @@
     <ClInclude Include="ParserCbr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RarFile.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp">
@@ -174,9 +171,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ParserCbr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RarFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,8 +1,5 @@
 #include "pch.h"
 #include "ParserCbr.h"
-#include "Utility.h"
-#include "Gfx.h"
-#include "XmlDocument.h"
 
 namespace Parser
 {
@@ -31,8 +28,20 @@ namespace Parser
 
 	Result Cbr::Parse(const vector<char>& fileContent) const
 	{
-		vector<char> outImage{};
-		const Xml::Document xmlFile{ string{fileContent.begin(), fileContent.end()} };
+		RAROpenArchiveDataEx archiveData{};
+		memset(&archiveData, 0, sizeof RAROpenArchiveDataEx);
+		archiveData.ArcName = const_cast<char *>("archive"); // Dummy name
+		archiveData.OpenMode = RAR_OM_LIST;
+		archiveData.Callback = nullptr; //TODO What is the callback for, how does it work? UNRARCALLBACK
+
+		const auto handle = RAROpenArchiveEx(&archiveData);
+		if (handle == nullptr)
+			return Result{ E_FAIL };
+
+		const auto dataSet = static_cast<DataSet*>(handle);
+		dataSet->Arc.SetFileContent(fileContent);
+
+		//TODO Continue here, Rar functionality must be extracted to a separate class
 
 		HBITMAP coverBitmap{ nullptr };
 		WTS_ALPHATYPE coverBitmapAlpha{};

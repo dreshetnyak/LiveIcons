@@ -203,7 +203,6 @@
     <ClInclude Include="ParserMobi.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="RamFile.h" />
-    <ClInclude Include="RarFile.h" />
     <ClInclude Include="ReferenceCounter.h" />
     <ClInclude Include="Registry.h" />
     <ClInclude Include="resource.h" />
@@ -239,7 +238,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="RamFile.cpp" />
-    <ClCompile Include="RarFile.cpp" />
     <ClCompile Include="Registry.cpp" />
     <ClCompile Include="StrLib.cpp" />
     <ClCompile Include="Utility.cpp" />

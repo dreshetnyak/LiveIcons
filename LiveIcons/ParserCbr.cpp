@@ -38,51 +38,60 @@ namespace Parser
 		if (handle == nullptr)
 			return Result{ E_FAIL };
 
-		const auto dataSet = static_cast<DataSet*>(handle);
-		dataSet->Arc.SetFileContent(fileContent);
+		const auto dataSet = static_cast<DataSet*>(handle); // The handle is actually DataSet*, it contains Archive Arc, Archive is custom derived from FileVector which will be used as a source of the file data
+		dataSet->Arc.SetFileContent(fileContent);			// fileContent contains the bytes of the file that we need to unpack.
 
 		//TODO Continue here, Rar functionality must be extracted to a separate class
+
+		auto arcNames = dataSet->Cmd.ArcNames;
+		auto itemsCount = arcNames.ItemsCount();
+
+		shared_ptr<wchar_t[]> buffer { new wchar_t[1024] };
+		arcNames.GetString(buffer.get(), 1024);
+		arcNames.GetString(buffer.get(), 1024);
 
 		HBITMAP coverBitmap{ nullptr };
 		WTS_ALPHATYPE coverBitmapAlpha{};
 
-		return GetFirstImage(xmlFile, coverBitmap, coverBitmapAlpha)
-			? Result{{}, coverBitmap, coverBitmapAlpha }
-			: Result{ E_FAIL };
+		//return GetFirstImage(xmlFile, coverBitmap, coverBitmapAlpha)
+		//	? Result{{}, coverBitmap, coverBitmapAlpha }
+		//	: Result{ E_FAIL };
+
+		return Result{ S_OK };
 	}
 
-	bool Cbr::GetFirstImage(const Xml::Document& xmlFile, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType) const
-	{
-		DataSpan elementDataSpan{};
-		span<char> base64EncodedImageSpan{};
-		size_t startOffset{ 0 };
-		while (xmlFile.GetElementTagContainsContentPos("binary", "image/", startOffset, base64EncodedImageSpan, elementDataSpan))
-		{
-			if (GetCoverImage(base64EncodedImageSpan, outBitmap, outAlphaType))
-				return true;
-			startOffset = elementDataSpan.OffsetAfterSpan();
-		}
+	//bool Cbr::GetFirstImage(const Xml::Document& xmlFile, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType) const
+	//{
+	//	DataSpan elementDataSpan{};
+	//	span<char> base64EncodedImageSpan{};
+	//	size_t startOffset{ 0 };
+	//	while (xmlFile.GetElementTagContainsContentPos("binary", "image/", startOffset, base64EncodedImageSpan, elementDataSpan))
+	//	{
+	//		if (GetCoverImage(base64EncodedImageSpan, outBitmap, outAlphaType))
+	//			return true;
+	//		startOffset = elementDataSpan.OffsetAfterSpan();
+	//	}
 
-		return false;
-	}
+	//	return false;
+	//}
 
-	bool Cbr::GetCoverImage(const span<char>& base64EncodedImageSpan, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType) const
-	{
-		const string base64EncodedImage{ base64EncodedImageSpan.begin(), base64EncodedImageSpan.end() };
-		StrLib::Filter<char>(base64EncodedImage, " \r\n\t");
+	//bool Cbr::GetCoverImage(const span<char>& base64EncodedImageSpan, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType) const
+	//{
+	//	const string base64EncodedImage{ base64EncodedImageSpan.begin(), base64EncodedImageSpan.end() };
+	//	StrLib::Filter<char>(base64EncodedImage, " \r\n\t");
 
-		vector<char> image{};
-		if (FAILED(Utility::DecodeBase64(base64EncodedImage, image)))
-			return false;
+	//	vector<char> image{};
+	//	if (FAILED(Utility::DecodeBase64(base64EncodedImage, image)))
+	//		return false;
 
-		SIZE imageSize{};
-		if (FAILED(Gfx::LoadImageToHBitmap(image.data(), image.size(), outBitmap, outAlphaType, imageSize)))
-			return false;
+	//	SIZE imageSize{};
+	//	if (FAILED(Gfx::LoadImageToHBitmap(image.data(), image.size(), outBitmap, outAlphaType, imageSize)))
+	//		return false;
 
-		if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
-			return true;
+	//	if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
+	//		return true;
 
-		DeleteObject(outBitmap);
-		return false;
-	}
+	//	DeleteObject(outBitmap);
+	//	return false;
+	//}
 }

@@ -8,7 +8,7 @@ namespace Registry
 	HRESULT SetEntry(const Entry& registryEntry)
 	{
 		constexpr char emptyStr[]{ '\x0' };
-		Log::Write(std::format("Registry::SetEntry: Key Name: '{}'; Value Name: '{}'; Data: '{}'", 
+		Logger::Write(std::format("Registry::SetEntry: Key Name: '{}'; Value Name: '{}'; Data: '{}'",
 			registryEntry.KeyName != nullptr ? StrLib::ToString(registryEntry.KeyName) : emptyStr,
 			registryEntry.ValueName != nullptr ? StrLib::ToString(registryEntry.ValueName) : emptyStr,
 			registryEntry.Data != nullptr ? StrLib::ToString(registryEntry.Data) : emptyStr));
@@ -47,7 +47,7 @@ namespace Registry
 		for (const auto path : paths)
 		{
 			constexpr char emptyStr[]{ '\x0' };
-			Log::Write(std::format("Registry::DeleteRegistryPaths: Path: '{}'", path != nullptr ? StrLib::ToString(path) : emptyStr));
+			Logger::Write(std::format("Registry::DeleteRegistryPaths: Path: '{}'", path != nullptr ? StrLib::ToString(path) : emptyStr));
 			if (const auto result = HRESULT_FROM_WIN32(RegDeleteTreeW(HKEY_CURRENT_USER, path)); result != fileNotFound && FAILED(result))
 				return result;
 		}

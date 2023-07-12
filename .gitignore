@@ -5,3 +5,5 @@
 /.vs
 /bin
 /LiveIcons/obj
+/Testing/obj
+/Testing/Testing.vcxproj.user

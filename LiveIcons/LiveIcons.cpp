@@ -117,17 +117,17 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 {
 	try
 	{
-		Log::Write("LiveIcons::GetThumbnail: Starting.");
+		Logger::Write("LiveIcons::GetThumbnail: Starting.");
 
 		std::wstring fileName{};
 		if (const auto result = Utility::GetIStreamFileName(Stream, fileName); FAILED(result))
 			return E_FAIL;
-		Log::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: File name: '{}'", fileName)));
+		Logger::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: File name: '{}'", fileName)));
 
 		std::wstring fileExtension{};
 		if (const auto result = Utility::GetFileExtension(fileName, fileExtension); FAILED(result))
 			return E_FAIL;
-		Log::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: File extension: '{}'", fileExtension)));
+		Logger::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: File extension: '{}'", fileExtension)));
 
 		for (const auto& parser : Parsers)
 		{
@@ -137,23 +137,23 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 			const auto&& parseResult = parser->Parse(Stream);
 			if (FAILED(parseResult.HResult))
 			{
-				Log::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: Parsing error: {}", parseResult.Error)));
+				Logger::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: Parsing error: {}", parseResult.Error)));
 				return parseResult.HResult;
 			}
 
-			Log::Write("LiveIcons::GetThumbnail: Parsing success. Cover image obtained.");
+			Logger::Write("LiveIcons::GetThumbnail: Parsing success. Cover image obtained.");
 			*outBitmapHandle = parseResult.Cover;
 			*putAlpha = parseResult.CoverAlpha;
 			return S_OK;
 		}
 
-		Log::Write("LiveIcons::GetThumbnail: Failed to parse.");
+		Logger::Write("LiveIcons::GetThumbnail: Failed to parse.");
 		return E_FAIL;
 	}
 	catch (const std::exception& ex)
 	{
 		const auto message = ex.what();
-		Log::Write(std::format("LiveIcons::GetThumbnail: Exception: '{}'", message != nullptr ? message : ""));
+		Logger::Write(std::format("LiveIcons::GetThumbnail: Exception: '{}'", message != nullptr ? message : ""));
 		return E_UNEXPECTED;
 	}
 }

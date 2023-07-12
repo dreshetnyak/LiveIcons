@@ -178,12 +178,12 @@ namespace Utility
 
     HRESULT DecodeBase64(const string& base64Encoded, vector<char>& outDecoded)
     {
-        Log::Write("Utility::DecodeBase64: Starting.");
+        Logger::Write("Utility::DecodeBase64: Starting.");
 
     	const auto encodedDataPtr = base64Encoded.data();
         const auto encodedSize = static_cast<DWORD>(base64Encoded.size());
 
-        Log::Write(format("Utility::DecodeBase64: Encoded size: {}", encodedSize));
+        Logger::Write(format("Utility::DecodeBase64: Encoded size: {}", encodedSize));
 
     	DWORD dwDecodedSize = 0, dwSkipChars = 0, dwActualFormat = 0;        
         if (!CryptStringToBinaryA(
@@ -196,7 +196,7 @@ namespace Utility
             &dwActualFormat))
             return E_FAIL;
 
-        Log::Write(format("Utility::DecodeBase64: Decoded size: {}", dwDecodedSize));
+        Logger::Write(format("Utility::DecodeBase64: Decoded size: {}", dwDecodedSize));
         outDecoded.resize(dwDecodedSize);
 
         return CryptStringToBinaryA(
@@ -240,7 +240,7 @@ namespace Utility
     }
 }
 
-namespace Log
+namespace Logger
 {
     void Write(const string& message)
     {

@@ -5,7 +5,7 @@
 class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
 {
     static std::vector<std::shared_ptr<Parser::Base>> Parsers;
-    ReferenceCounter LiveIconsReferences{};
+	ReferenceCounter LiveIconsReferences{};
     IStream* Stream{};
 
 	LiveIcons();
@@ -13,6 +13,7 @@ class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
 
 public:
 	static HRESULT CreateInstance(REFIID riid, void** ppv);
+    static const std::vector<std::shared_ptr<Parser::Base>>& GetParsers() { return Parsers; }
 
     LiveIcons(const LiveIcons& liveIcons) = delete;
     LiveIcons(LiveIcons&& liveIcons) = delete;

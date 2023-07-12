@@ -59,7 +59,7 @@ struct DataSpan final
 	[[nodiscard]] size_t OffsetAfterSpan() const { return Offset + Size; }
 };
 
-namespace Log
+namespace Logger
 {
 	using namespace std;
 

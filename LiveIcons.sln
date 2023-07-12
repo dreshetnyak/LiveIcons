@@ -25,6 +25,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libmobi", "libmobi\msvc\lib
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnRAR", "unrar\UnRARDll.vcxproj", "{E815C46C-36C4-499F-BBC2-E772C6B17971}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Testing", "Testing\Testing.vcxproj", "{AE5A9BAD-0123-4844-96E3-55A419694BD1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -107,6 +109,18 @@ Global
 		{E815C46C-36C4-499F-BBC2-E772C6B17971}.Release|x64.Build.0 = Release|x64
 		{E815C46C-36C4-499F-BBC2-E772C6B17971}.Release|x86.ActiveCfg = Release|Win32
 		{E815C46C-36C4-499F-BBC2-E772C6B17971}.Release|x86.Build.0 = Release|Win32
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Debug|x64.ActiveCfg = Debug|x64
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Debug|x64.Build.0 = Debug|x64
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Debug|x86.ActiveCfg = Debug|Win32
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Debug|x86.Build.0 = Debug|Win32
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.release_nocrypt|x64.ActiveCfg = Release|x64
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.release_nocrypt|x64.Build.0 = Release|x64
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.release_nocrypt|x86.ActiveCfg = Release|Win32
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.release_nocrypt|x86.Build.0 = Release|Win32
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Release|x64.ActiveCfg = Release|x64
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Release|x64.Build.0 = Release|x64
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Release|x86.ActiveCfg = Release|Win32
+		{AE5A9BAD-0123-4844-96E3-55A419694BD1}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

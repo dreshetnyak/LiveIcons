@@ -24,7 +24,7 @@ std::string GetCallReasonName(const DWORD callReason)
 
 STDAPI_(BOOL) DllMain(const HMODULE moduleHandle, const DWORD callReason, LPVOID)
 {
-	Log::Write("DllMain: " + GetCallReasonName(callReason));
+	Logger::Write("DllMain: " + GetCallReasonName(callReason));
 	if (callReason != DLL_PROCESS_ATTACH)
 		return TRUE;	
 	dllModuleHandle = moduleHandle;
@@ -34,7 +34,7 @@ STDAPI_(BOOL) DllMain(const HMODULE moduleHandle, const DWORD callReason, LPVOID
 
 STDAPI DllCanUnloadNow()
 {
-	Log::Write("DllCanUnloadNow.");
+	Logger::Write("DllCanUnloadNow.");
 	return dllReferenceCounter.NoReference()
 		? S_OK
 		: S_FALSE;
@@ -42,15 +42,15 @@ STDAPI DllCanUnloadNow()
 
 STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void** ppv)
 {	
-	Log::Write("DllGetClassObject: Starting.");
+	Logger::Write("DllGetClassObject: Starting.");
 	const auto result = ClassFactory::CreateInstance(clsid, riid, ppv);
-	Log::Write(std::format("DllGetClassObject: Finished. HRESULT: {}", std::system_category().message(result)));
+	Logger::Write(std::format("DllGetClassObject: Finished. HRESULT: {}", std::system_category().message(result)));
 	return result;
 }
 
 STDAPI DllUnregisterServer()
 {
-	Log::Write("DllUnregisterServer: Starting.");
+	Logger::Write("DllUnregisterServer: Starting.");
 	const auto result = Registry::DeleteRegistryPaths(std::vector
 		{
 			REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR,
@@ -62,18 +62,18 @@ STDAPI DllUnregisterServer()
 			CLSID_CHM_THUMBNAIL_PROVIDER_PATH
 		});
 
-	Log::Write(std::format("DllUnregisterServer: Finished. HRESULT: {}", std::system_category().message(result)));	
+	Logger::Write(std::format("DllUnregisterServer: Finished. HRESULT: {}", std::system_category().message(result)));
 	return result;
 }
 
 STDAPI DllRegisterServer()
 {
-	Log::Write("DllRegisterServer: Starting.");
+	Logger::Write("DllRegisterServer: Starting.");
 
 	WCHAR szModuleName[MAX_PATH];
 	if (!GetModuleFileNameW(dllModuleHandle, szModuleName, ARRAYSIZE(szModuleName)))
 	{
-		Log::Write("DllRegisterServer: Error: GetModuleFileNameW failed.");
+		Logger::Write("DllRegisterServer: Error: GetModuleFileNameW failed.");
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 		
@@ -92,15 +92,15 @@ STDAPI DllRegisterServer()
 	
 	if (SUCCEEDED(result))
 	{
-		Log::Write("DllRegisterServer: SHChangeNotify.");
+		Logger::Write("DllRegisterServer: SHChangeNotify.");
 		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr); // Invalidate the thumbnail cache.
 	}
 	else
 	{
-		Log::Write("DllRegisterServer: DllUnregisterServer.");
+		Logger::Write("DllRegisterServer: DllUnregisterServer.");
 		DllUnregisterServer();
 	}
 
-	Log::Write("DllRegisterServer: Finished.");
+	Logger::Write("DllRegisterServer: Finished.");
 	return result;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "ParserBase.h"
 #include "ParserEpub.h"
+#include "ReferenceCounter.h"
 
 class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
 {

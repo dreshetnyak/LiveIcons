@@ -2,6 +2,7 @@
 #include <span>
 #include <string>
 #include <utility>
+#include <functional>
 #include "Utility.h"
 
 namespace Xml

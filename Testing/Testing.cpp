@@ -11,7 +11,7 @@ using namespace std;
 void GetThumbnails(const wstring& readPath, const wstring& writePath);
 Parser::Result GetThumbnail(const wstring& filePath);
 void FindFiles(std::vector<wstring>& files, const std::wstring& path);
-wstring GetWriteFileName(const wstring& sourceFilePath, const wstring& writePath);
+wstring GetWriteFileName(const wstring& sourceFilePath, const wstring& writePath, const wstring& extension);
 wstring GetFileName(const wstring& filePath);
 void WriteLog(const wstring& message);
 struct GroupThousands final : numpunct<char> { [[nodiscard]] basic_string<char> do_grouping() const override { return "\3"; } };
@@ -54,7 +54,7 @@ void GetThumbnails(const wstring& readPath, const wstring& writePath)
 		if (result.Cover == nullptr) 
 			continue; // Unsupported extension
 
-		if (SaveImage(result.Cover, GetWriteFileName(filePath, writePath), Gfx::ImageFileType::Png))
+		if (SaveImage(result.Cover, GetWriteFileName(filePath, writePath, L".png"), Gfx::ImageFileType::Png))
 			WriteLog(std::format(L"Success: '{}'", filePath));
 		else
 			WriteLog(std::format(L"Failure: '{}'; Message: 'Parsing success, failed to save'", filePath));

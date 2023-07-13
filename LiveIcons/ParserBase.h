@@ -3,6 +3,7 @@
 #include <string>
 #include <Windows.h>
 #include <system_error>
+#include <thumbcache.h>
 
 #include "StrLib.h"
 

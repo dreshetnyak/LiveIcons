@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Utility.h"
 #include "GlobalMem.h"
+#include <chrono>
 
 namespace Utility
 {
@@ -243,12 +244,10 @@ namespace Utility
 namespace Logger
 {
     void Write(const string& message)
-    {
-        //OutputDebugString();
+    {        
 #ifdef _DEBUG
-        WriteToFile("C:\\Projects\\LiveIcons\\x64\\Debug\\log.txt", format("{:%Y-%m-%d %T} {}", static_cast<chrono::sys_time<chrono::nanoseconds>>(chrono::system_clock::now()), message).c_str());
-#endif
-        //C:\Projects\LiveIcons\x64\Debug
+        WriteToFile(R"(C:\Projects\LiveIcons\x64\Debug\log.txt)", std::format("{:%Y-%m-%d %T} {}", static_cast<chrono::sys_time<chrono::nanoseconds>>(chrono::system_clock::now()), message));
+#endif        
     }
 
     std::mutex LogFileLock{};

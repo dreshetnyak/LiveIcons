@@ -16,7 +16,7 @@ wstring GetFileName(const wstring& filePath);
 void WriteLog(const wstring& message);
 struct GroupThousands final : numpunct<char> { [[nodiscard]] basic_string<char> do_grouping() const override { return "\3"; } };
 
-int wmain(int argc, wchar_t* argv[])
+int wmain(const int argc, wchar_t* argv[])
 {
 	if (argc != 3)
 	{
@@ -65,7 +65,7 @@ void FindFiles(std::vector<wstring>& files, const std::wstring& path)
 {
 	for (const auto& file : std::filesystem::directory_iterator(path, std::filesystem::directory_options::skip_permission_denied))
 	{
-		const auto filePath = file.path();
+		const auto& filePath = file.path();
 		if (file.is_directory())
 		{
 			FindFiles(files, filePath);

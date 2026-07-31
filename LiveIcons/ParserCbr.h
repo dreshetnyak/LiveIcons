@@ -4,9 +4,9 @@
 #include "Gfx.h"
 #include "XmlDocument.h"
 #include "../UnRar/dll.hpp"
-#include "../UnRar/dll.cpp"
-#include "../UnRar/file.hpp"
-#include "../UnRar/archive.hpp"
+//#include "../UnRar/dll.cpp"
+//#include "../UnRar/file.hpp"
+//#include "../UnRar/archive.hpp"
 
 namespace Parser
 {
@@ -20,3 +20,13 @@ namespace Parser
 	};
 }
 
+struct DataSet
+{
+	CommandData Cmd;
+	Archive Arc;
+	CmdExtract Extract;
+	int OpenMode;
+	int HeaderSize;
+
+	DataSet() :Arc(&Cmd), Extract(&Cmd) {};
+};

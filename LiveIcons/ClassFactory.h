@@ -3,25 +3,25 @@
 
 class ClassFactory final : public IClassFactory
 {
-	ReferenceCounter ClassFactoryReferences{};
+	ReferenceCounter ClassFactoryReferences{ 1 };
 
 	CreateInstanceFunction Create;
-	~ClassFactory();
+	~ClassFactory() noexcept;
 
 public:
-	static HRESULT CreateInstance(const IID& clsid, const IID& riid, void** ppv);
-	explicit ClassFactory(CreateInstanceFunction createInstance);
+	static HRESULT CreateInstance(const IID& clsid, const IID& riid, void** ppv) noexcept;
+	explicit ClassFactory(CreateInstanceFunction createInstance) noexcept;
 	ClassFactory() = delete;
 	ClassFactory(const ClassFactory& classFactory) = delete;
 	ClassFactory(ClassFactory&& classFactory) = delete;
 	ClassFactory& operator= (const ClassFactory&) = delete;
 
 	// IUnknown
-	IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
-	IFACEMETHODIMP_(ULONG) AddRef() override;
-	IFACEMETHODIMP_(ULONG) Release() override;
+	IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv) noexcept override;
+	IFACEMETHODIMP_(ULONG) AddRef() noexcept override;
+	IFACEMETHODIMP_(ULONG) Release() noexcept override;
 
 	// IClassFactory
-	IFACEMETHODIMP CreateInstance(IUnknown* pUnkOuter, REFIID riid, void** ppv) override;
-	IFACEMETHODIMP LockServer(BOOL isLock) override;
+	IFACEMETHODIMP CreateInstance(IUnknown* pUnkOuter, REFIID riid, void** ppv) noexcept override;
+	IFACEMETHODIMP LockServer(BOOL isLock) noexcept override;
 };

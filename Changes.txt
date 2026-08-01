@@ -6,6 +6,13 @@ Fix. Removed LiveIcons' copied zlib internals and now use MiniZip's public archi
 Fix. Corrected binary file reading, which previously discarded whitespace and could corrupt files parsed by path.
 Fix. Bounded CBR snapshot/decompression work and checked decoded bitmap dimensions before allocation.
 Fix. Hardened thumbnail-provider COM entry points against null and uninitialized arguments.
+Fix. Restored the required undecorated COM DLL exports in Win32 builds.
+Fix. Added no-throw COM/export boundaries, deterministic resource ownership, bounded parser inputs, and exception-to-HRESULT translation.
+Fix. Hardened the retained CHMLib fork against cyclic directories, invalid LZX metadata, unchecked arithmetic, allocation failures, and native resource leaks.
+Fix. Hardened libmobi against malformed HUFF/CDIC and DRM metadata and checked hybrid-document allocation failure.
+Fix. Rejected multi-volume CBR input and RAR dictionaries above 128 MiB before UnRAR processing.
+New. Added a privacy-preserving, rate-limited diagnostic log under LocalLow with rotation and stale-file cleanup.
+New. Added adversarial IStream, malformed-input, COM lifetime, exception-firewall, and logger boundary tests.
 
 LiveIcons v1.0: 2023-06-23
 New. Added support of CHM files.

@@ -1,57 +1,60 @@
-// dllmain.cpp : Defines the entry point for the DLL application.
 #include "pch.h"
 #include "DllMain.h"
 
+#include <array>
+#include <string>
+
 #include "ClassFactory.h"
-#include "ReferenceCounter.h"
+#include "Configuration.h"
+#include "ExceptionBoundary.h"
+#include "Log.h"
 #include "Registry.h"
-#include "Utility.h"
 
 ReferenceCounter dllReferenceCounter{};
+ReferenceCounter dllServerLockCounter{};
 HINSTANCE dllModuleHandle{};
 
-std::string GetCallReasonName(const DWORD callReason)
+namespace
 {
-	switch (callReason)
+	[[nodiscard]] HRESULT LastErrorAsHResult() noexcept
 	{
-	case DLL_PROCESS_ATTACH: return "DLL_PROCESS_ATTACH";
-	case DLL_THREAD_ATTACH: return "DLL_THREAD_ATTACH";
-	case DLL_THREAD_DETACH: return "DLL_THREAD_DETACH";
-	case DLL_PROCESS_DETACH: return "DLL_PROCESS_DETACH";
-	default: return "UNKNOWN";
+		const DWORD error = GetLastError();
+		return HRESULT_FROM_WIN32(error != ERROR_SUCCESS ? error : ERROR_GEN_FAILURE);
 	}
-}
 
-STDAPI_(BOOL) DllMain(const HMODULE moduleHandle, const DWORD callReason, LPVOID)
-{
-	Log::Write("DllMain: " + GetCallReasonName(callReason));
-	if (callReason != DLL_PROCESS_ATTACH)
-		return TRUE;	
-	dllModuleHandle = moduleHandle;
-	DisableThreadLibraryCalls(moduleHandle);
-	return TRUE;
-}
+	[[nodiscard]] HRESULT GetModulePath(std::wstring& outPath)
+	{
+		outPath.clear();
+		if (dllModuleHandle == nullptr)
+			return E_UNEXPECTED;
 
-STDAPI DllCanUnloadNow()
-{
-	Log::Write("DllCanUnloadNow.");
-	return dllReferenceCounter.NoReference()
-		? S_OK
-		: S_FALSE;
-}
+		constexpr DWORD MaximumPathLength{ 32768 };
+		for (DWORD capacity = MAX_PATH; capacity <= MaximumPathLength; capacity *= 2)
+		{
+			if (capacity > MaximumPathLength / 2)
+				capacity = MaximumPathLength;
+			std::wstring path(capacity, L'\0');
+			SetLastError(ERROR_SUCCESS);
+			const DWORD length = GetModuleFileNameW(
+				dllModuleHandle, path.data(), capacity);
+			if (length == 0)
+				return LastErrorAsHResult();
+			if (length < capacity)
+			{
+				path.resize(length);
+				outPath.swap(path);
+				return S_OK;
+			}
+			if (capacity == MaximumPathLength)
+				break;
+		}
 
-STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void** ppv)
-{	
-	Log::Write("DllGetClassObject: Starting.");
-	const auto result = ClassFactory::CreateInstance(clsid, riid, ppv);
-	Log::Write(std::format("DllGetClassObject: Finished. HRESULT: {}", std::system_category().message(result)));
-	return result;
-}
+		return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+	}
 
-STDAPI DllUnregisterServer()
-{
-	Log::Write("DllUnregisterServer: Starting.");
-	const auto result = Registry::DeleteRegistryPaths(std::vector
+	[[nodiscard]] HRESULT UnregisterImplementation() noexcept
+	{
+		constexpr std::array<PCWSTR, 8> paths
 		{
 			REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR,
 			CLSID_EPUB_THUMBNAIL_PROVIDER_PATH,
@@ -61,48 +64,145 @@ STDAPI DllUnregisterServer()
 			CLSID_AZW_THUMBNAIL_PROVIDER_PATH,
 			CLSID_CHM_THUMBNAIL_PROVIDER_PATH,
 			CLSID_CBR_THUMBNAIL_PROVIDER_PATH
-		});
+		};
+		return Registry::DeleteRegistryPaths(paths);
+	}
 
-	Log::Write(std::format("DllUnregisterServer: Finished. HRESULT: {}", std::system_category().message(result)));	
+	[[nodiscard]] HRESULT RegisterImplementation(const std::wstring& modulePath) noexcept
+	{
+		const std::array<Registry::Entry, 10> entries
+		{
+			Registry::Entry{ HKEY_CURRENT_USER, REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR, nullptr, LIVE_ICONS_HANDLER_NAME },
+			Registry::Entry{ HKEY_CURRENT_USER, REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR REG_INPROCSERVER32, nullptr, modulePath.c_str() },
+			Registry::Entry{ HKEY_CURRENT_USER, REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR REG_INPROCSERVER32, L"ThreadingModel", L"Apartment" },
+			Registry::Entry{ HKEY_CURRENT_USER, CLSID_EPUB_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
+			Registry::Entry{ HKEY_CURRENT_USER, CLSID_FB2_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
+			Registry::Entry{ HKEY_CURRENT_USER, CLSID_MOBI_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
+			Registry::Entry{ HKEY_CURRENT_USER, CLSID_AZW3_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
+			Registry::Entry{ HKEY_CURRENT_USER, CLSID_AZW_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
+			Registry::Entry{ HKEY_CURRENT_USER, CLSID_CHM_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
+			Registry::Entry{ HKEY_CURRENT_USER, CLSID_CBR_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR }
+		};
+		return Registry::SetEntries(entries);
+	}
+}
+
+STDAPI_(BOOL) DllMain(
+	const HMODULE moduleHandle,
+	const DWORD callReason,
+	LPVOID) noexcept
+{
+	if (callReason != DLL_PROCESS_ATTACH)
+		return TRUE;
+	dllModuleHandle = moduleHandle;
+	DisableThreadLibraryCalls(moduleHandle);
+	return TRUE;
+}
+
+__control_entrypoint(DllExport)
+STDAPI DllCanUnloadNow()
+{
+	return dllReferenceCounter.NoReference() && dllServerLockCounter.NoReference()
+		? S_OK
+		: S_FALSE;
+}
+
+_Check_return_
+STDAPI DllGetClassObject(
+	_In_ REFCLSID clsid,
+	_In_ REFIID riid,
+	_Outptr_ void** ppv)
+{
+	if (ppv == nullptr)
+		return E_POINTER;
+	*ppv = nullptr;
+
+	const auto correlationId = Log::NextCorrelationId();
+	const HRESULT result = ExceptionBoundary::ToHResult(
+		Log::EventId::DllGetClassObject,
+		correlationId,
+		[&]() -> HRESULT
+		{
+			const HRESULT result = ClassFactory::CreateInstance(clsid, riid, ppv);
+			if (FAILED(result) && result != CLASS_E_CLASSNOTAVAILABLE)
+				Log::Error(
+					Log::EventId::DllGetClassObject,
+					result,
+					correlationId,
+					"activation");
+			return result;
+		});
+	if (FAILED(result))
+		return result;
+	if (*ppv == nullptr)
+	{
+		Log::Error(
+			Log::EventId::DllGetClassObject,
+			E_UNEXPECTED,
+			correlationId,
+			"activation-null-output");
+		return E_UNEXPECTED;
+	}
 	return result;
 }
 
-STDAPI DllRegisterServer()
+STDAPI DllUnregisterServer() noexcept
 {
-	Log::Write("DllRegisterServer: Starting.");
+	const auto correlationId = Log::NextCorrelationId();
+	return ExceptionBoundary::ToHResult(
+		Log::EventId::DllUnregisterServer,
+		correlationId,
+		[&]() -> HRESULT
+		{
+			const HRESULT result = UnregisterImplementation();
+			if (FAILED(result))
+				Log::Error(
+					Log::EventId::DllUnregisterServer,
+					result,
+					correlationId,
+					"registry-delete");
+			return result;
+		});
+}
 
-	WCHAR szModuleName[MAX_PATH];
-	if (!GetModuleFileNameW(dllModuleHandle, szModuleName, ARRAYSIZE(szModuleName)))
-	{
-		Log::Write("DllRegisterServer: Error: GetModuleFileNameW failed.");
-		return HRESULT_FROM_WIN32(GetLastError());
-	}
-		
-	const auto result = Registry::SetEntries(std::vector<Registry::Entry>
-	{	// RootKey, KeyName, ValueName, Data
-		{ HKEY_CURRENT_USER, REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR, nullptr, LIVE_ICONS_HANDLER_NAME },
-		{ HKEY_CURRENT_USER, REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR REG_INPROCSERVER32, nullptr, szModuleName },
-		{ HKEY_CURRENT_USER, REG_SOFTWARE_CLASSES_CLSID CLSID_LIVE_ICONS_HANDLER_STR REG_INPROCSERVER32, L"ThreadingModel", L"Apartment" },
-		{ HKEY_CURRENT_USER, CLSID_EPUB_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
-		{ HKEY_CURRENT_USER, CLSID_FB2_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
-		{ HKEY_CURRENT_USER, CLSID_MOBI_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
-		{ HKEY_CURRENT_USER, CLSID_AZW3_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
-		{ HKEY_CURRENT_USER, CLSID_AZW_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
-		{ HKEY_CURRENT_USER, CLSID_CHM_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR },
-		{ HKEY_CURRENT_USER, CLSID_CBR_THUMBNAIL_PROVIDER_PATH, nullptr, CLSID_LIVE_ICONS_HANDLER_STR }
-	});
-	
-	if (SUCCEEDED(result))
-	{
-		Log::Write("DllRegisterServer: SHChangeNotify.");
-		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr); // Invalidate the thumbnail cache.
-	}
-	else
-	{
-		Log::Write("DllRegisterServer: DllUnregisterServer.");
-		DllUnregisterServer();
-	}
+STDAPI DllRegisterServer() noexcept
+{
+	const auto correlationId = Log::NextCorrelationId();
+	return ExceptionBoundary::ToHResult(
+		Log::EventId::DllRegisterServer,
+		correlationId,
+		[&]() -> HRESULT
+		{
+			std::wstring modulePath;
+			if (const HRESULT result = GetModulePath(modulePath); FAILED(result))
+			{
+				Log::Error(
+					Log::EventId::DllRegisterServer,
+					result,
+					correlationId,
+					"module-path");
+				return result;
+			}
 
-	Log::Write("DllRegisterServer: Finished.");
-	return result;
+			const HRESULT result = RegisterImplementation(modulePath);
+			if (FAILED(result))
+			{
+				Log::Error(
+					Log::EventId::DllRegisterServer,
+					result,
+					correlationId,
+					"registry-write");
+				const HRESULT rollbackResult = UnregisterImplementation();
+				if (FAILED(rollbackResult))
+					Log::Error(
+						Log::EventId::DllRegisterServer,
+						rollbackResult,
+						correlationId,
+						"rollback");
+				return result;
+			}
+
+			SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
+			return S_OK;
+		});
 }

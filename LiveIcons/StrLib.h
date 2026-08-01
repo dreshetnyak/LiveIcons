@@ -54,7 +54,7 @@ namespace StrLib
         for (auto strIndex = offset; strIndex <= strLimit; ++strIndex)
         {
             auto match = true;
-            for (auto findStrIndex = 0; findStrIndex < findStrSize; ++findStrIndex)
+            for (size_t findStrIndex = 0; findStrIndex < findStrSize; ++findStrIndex)
             {
                 if (EqualsCi(str[strIndex + findStrIndex], findStr[findStrIndex]))
                     continue;
@@ -132,10 +132,10 @@ namespace StrLib
         if (strSize == 0)
             return false;
         const auto startStrSize = strStart.size();
-        if (startStrSize == 0 || strSize - offset < startStrSize)
+        if (startStrSize == 0 || offset > strSize || strSize - offset < startStrSize)
             return false;
 
-        for (auto index = 0; index < startStrSize; ++index)
+        for (size_t index = 0; index < startStrSize; ++index)
         {
             if (!EqualsCi(str[offset + index], strStart[index]))
                 return false;
@@ -292,7 +292,7 @@ namespace StrLib
         if (srcSize == 0)
             return basic_string<T>{};
         basic_string<T> joinedStr{ src[0] };
-        for (auto srcItemIndex = 1; srcItemIndex < srcSize; ++srcItemIndex)
+        for (size_t srcItemIndex = 1; srcItemIndex < srcSize; ++srcItemIndex)
         {
             joinedStr.append(divider);
             joinedStr.append(src[srcItemIndex]);

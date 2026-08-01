@@ -1,206 +1,255 @@
 #include "pch.h"
 #include "Gfx.h"
 #include "DataIStream.h"
-#include "Utility.h"
 
+#include <atlbase.h>
 #include <cstdint>
 #include <limits>
+#include <memory>
+#include <new>
+#include <type_traits>
 
 namespace Gfx
 {
-	constexpr std::uint64_t MaximumDecodedBitmapBytes{ 64ULL * 1024ULL * 1024ULL };
-
-	HRESULT ConvertPixelFormat(IWICBitmapSource* bitmapSource, IWICImagingFactory* imagingFactory, IWICBitmapSource** bitmapSourceConverted)
+	namespace
 	{
-		IWICFormatConverter* formatConverter;
-		if (const auto result = imagingFactory->CreateFormatConverter(&formatConverter); FAILED(result))
+		constexpr std::uint64_t BytesPerPixel{ 4 };
+		constexpr std::uint64_t MaximumEncodedImageBytes{ 64ULL * 1024ULL * 1024ULL };
+		constexpr std::uint64_t MaximumDecodedBitmapBytes{ 64ULL * 1024ULL * 1024ULL };
+
+		struct BitmapDeleter final
+		{
+			void operator()(HBITMAP bitmap) const noexcept
+			{
+				if (bitmap != nullptr)
+					DeleteObject(bitmap);
+			}
+		};
+
+		using UniqueBitmap = std::unique_ptr<std::remove_pointer_t<HBITMAP>, BitmapDeleter>;
+
+		HRESULT ConvertPixelFormat(
+			IWICBitmapSource* bitmapSource,
+			IWICImagingFactory* imagingFactory,
+			CComPtr<IWICBitmapSource>& outConvertedSource) noexcept
+		{
+			outConvertedSource.Release();
+			if (bitmapSource == nullptr || imagingFactory == nullptr)
+				return E_POINTER;
+
+			CComPtr<IWICFormatConverter> formatConverter;
+			HRESULT result = imagingFactory->CreateFormatConverter(&formatConverter);
+			if (FAILED(result))
+				return result;
+
+			result = formatConverter->Initialize(
+				bitmapSource,
+				GUID_WICPixelFormat32bppBGRA,
+				WICBitmapDitherTypeNone,
+				nullptr,
+				0,
+				WICBitmapPaletteTypeCustom);
+			if (FAILED(result))
+				return result;
+
+			return formatConverter->QueryInterface(&outConvertedSource);
+		}
+
+		HRESULT Get32BppSource(
+			IWICBitmapSource* bitmapSource,
+			IWICImagingFactory* imagingFactory,
+			CComPtr<IWICBitmapSource>& outConvertedSource) noexcept
+		{
+			outConvertedSource.Release();
+			if (bitmapSource == nullptr || imagingFactory == nullptr)
+				return E_POINTER;
+
+			WICPixelFormatGUID sourcePixelFormat{};
+			const HRESULT result = bitmapSource->GetPixelFormat(&sourcePixelFormat);
+			if (FAILED(result))
+				return result;
+
+			return sourcePixelFormat == GUID_WICPixelFormat32bppBGRA
+				? bitmapSource->QueryInterface(&outConvertedSource)
+				: ConvertPixelFormat(bitmapSource, imagingFactory, outConvertedSource);
+		}
+
+		HRESULT ConvertBitmapSourceTo32BppHBitmap(
+			IWICBitmapSource* bitmapSource,
+			IWICImagingFactory* imagingFactory,
+			HBITMAP& outConvertedBitmap,
+			SIZE& outImageSize) noexcept
+		{
+			outConvertedBitmap = nullptr;
+			outImageSize = {};
+			if (bitmapSource == nullptr || imagingFactory == nullptr)
+				return E_POINTER;
+
+			CComPtr<IWICBitmapSource> convertedSource;
+			HRESULT result = Get32BppSource(bitmapSource, imagingFactory, convertedSource);
+			if (FAILED(result))
+				return result;
+
+			UINT sourceWidth = 0;
+			UINT sourceHeight = 0;
+			result = convertedSource->GetSize(&sourceWidth, &sourceHeight);
+			if (FAILED(result))
+				return result;
+
+			const auto width = static_cast<std::uint64_t>(sourceWidth);
+			const auto height = static_cast<std::uint64_t>(sourceHeight);
+			const auto maximumLong = static_cast<std::uint64_t>((std::numeric_limits<LONG>::max)());
+			const auto maximumPixels = MaximumDecodedBitmapBytes / BytesPerPixel;
+			if (width == 0 || height == 0)
+				return WINCODEC_ERR_BADIMAGE;
+			if (width > maximumLong || height > maximumLong || width > maximumPixels / height)
+			{
+				return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+			}
+
+			const auto stride = width * BytesPerPixel;
+			const auto bufferSize = stride * height;
+			if (stride > (std::numeric_limits<UINT>::max)() ||
+				bufferSize > (std::numeric_limits<UINT>::max)())
+			{
+				return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+			}
+
+			BITMAPINFO bitmapInfo{};
+			bitmapInfo.bmiHeader.biSize = sizeof bitmapInfo.bmiHeader;
+			bitmapInfo.bmiHeader.biWidth = static_cast<LONG>(sourceWidth);
+			bitmapInfo.bmiHeader.biHeight = -static_cast<LONG>(sourceHeight);
+			bitmapInfo.bmiHeader.biPlanes = 1;
+			bitmapInfo.bmiHeader.biBitCount = 32;
+			bitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+			BYTE* bitmapBits = nullptr;
+			SetLastError(ERROR_SUCCESS);
+			UniqueBitmap bitmap{ CreateDIBSection(
+				nullptr,
+				&bitmapInfo,
+				DIB_RGB_COLORS,
+				reinterpret_cast<void**>(&bitmapBits),
+				nullptr,
+				0) };
+			if (!bitmap)
+			{
+				const DWORD error = GetLastError();
+				return error == ERROR_SUCCESS ? E_OUTOFMEMORY : HRESULT_FROM_WIN32(error);
+			}
+			if (bitmapBits == nullptr)
+				return E_UNEXPECTED;
+
+			const WICRect sourceRectangle{
+				0,
+				0,
+				static_cast<INT>(sourceWidth),
+				static_cast<INT>(sourceHeight) };
+			result = convertedSource->CopyPixels(
+				&sourceRectangle,
+				static_cast<UINT>(stride),
+				static_cast<UINT>(bufferSize),
+				bitmapBits);
+			if (FAILED(result))
+				return result;
+
+			outImageSize = {
+				static_cast<LONG>(sourceWidth),
+				static_cast<LONG>(sourceHeight) };
+			outConvertedBitmap = bitmap.release();
+			return S_OK;
+		}
+
+		HRESULT WicCreate32BitsPerPixelHBitmap(
+			IStream* stream,
+			HBITMAP& outNewBitmap,
+			WTS_ALPHATYPE& outAlphaType,
+			SIZE& outImageSize) noexcept
+		{
+			outNewBitmap = nullptr;
+			outAlphaType = WTSAT_UNKNOWN;
+			outImageSize = {};
+			if (stream == nullptr)
+				return E_POINTER;
+
+			CComPtr<IWICImagingFactory> imagingFactory;
+			HRESULT result = CoCreateInstance(
+				CLSID_WICImagingFactory,
+				nullptr,
+				CLSCTX_INPROC_SERVER,
+				IID_PPV_ARGS(&imagingFactory));
+			if (FAILED(result))
+				return result;
+
+			CComPtr<IWICBitmapDecoder> decoder;
+			result = imagingFactory->CreateDecoderFromStream(
+				stream,
+				&GUID_VendorMicrosoft,
+				WICDecodeMetadataCacheOnDemand,
+				&decoder);
+			if (FAILED(result))
+				return result;
+
+			CComPtr<IWICBitmapFrameDecode> bitmapFrame;
+			result = decoder->GetFrame(0, &bitmapFrame);
+			if (FAILED(result))
+				return result;
+
+			result = ConvertBitmapSourceTo32BppHBitmap(
+				bitmapFrame,
+				imagingFactory,
+				outNewBitmap,
+				outImageSize);
+			if (SUCCEEDED(result))
+				outAlphaType = WTSAT_ARGB;
+
 			return result;
-
-		// Create the appropriate pixel format converter
-		auto result = formatConverter->Initialize(bitmapSource, GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, nullptr, 0, WICBitmapPaletteTypeCustom);
-		if (SUCCEEDED(result))
-			result = formatConverter->QueryInterface(bitmapSourceConverted);
-
-		formatConverter->Release();
-		return result;
+		}
 	}
 
-	HRESULT ConvertBitmapSourceTo32BppHBitmap(IWICBitmapSource* bitmapSource, IWICImagingFactory* imagingFactory, HBITMAP& outConvertedBitmap, SIZE& imageSize)
+	HRESULT LoadImageToHBitmap(
+		const char* sourceImage,
+		const std::size_t size,
+		HBITMAP& outBitmap,
+		WTS_ALPHATYPE& outAlphaType,
+		SIZE& imageSize) noexcept
 	{
-		outConvertedBitmap = nullptr;
+		outBitmap = nullptr;
+		outAlphaType = WTSAT_UNKNOWN;
+		imageSize = {};
 
-		IWICBitmapSource* bitmapSourceConverted = nullptr;
-		WICPixelFormatGUID guidPixelFormatSource;
-
-		auto result = bitmapSource->GetPixelFormat(&guidPixelFormatSource);
-		result = SUCCEEDED(result) && guidPixelFormatSource != GUID_WICPixelFormat32bppBGRA
-			? ConvertPixelFormat(bitmapSource, imagingFactory, &bitmapSourceConverted)
-			: bitmapSource->QueryInterface(&bitmapSourceConverted); // No need to convert
-		if (FAILED(result))
-			return result;
-
-		UINT nWidth, nHeight;
-		if (result = bitmapSourceConverted->GetSize(&nWidth, &nHeight); FAILED(result))
-		{
-			bitmapSourceConverted->Release();
-			return result;
-		}
-
-		const auto width = static_cast<std::uint64_t>(nWidth);
-		const auto height = static_cast<std::uint64_t>(nHeight);
-		const auto maximumLong = static_cast<std::uint64_t>((std::numeric_limits<LONG>::max)());
-		const auto maximumPixels = MaximumDecodedBitmapBytes / 4ULL;
-		if (width == 0 || height == 0 || width > maximumLong || height > maximumLong ||
-			width > maximumPixels / height)
-		{
-			bitmapSourceConverted->Release();
+		if (sourceImage == nullptr)
+			return E_POINTER;
+		if (size == 0)
+			return E_INVALIDARG;
+		if (size > MaximumEncodedImageBytes)
 			return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
-		}
 
-		const auto stride = width * 4ULL;
-		const auto bufferSize = stride * height;
-		if (stride > (std::numeric_limits<UINT>::max)() ||
-			bufferSize > (std::numeric_limits<UINT>::max)())
+		try
 		{
-			bitmapSourceConverted->Release();
-			return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+			const Utility::DataIStream imageStream{ sourceImage, size };
+			const HRESULT result = imageStream.GetHResult();
+			return FAILED(result)
+				? result
+				: WicCreate32BitsPerPixelHBitmap(
+					imageStream.GetIStream(), outBitmap, outAlphaType, imageSize);
 		}
-
-		imageSize.cx = static_cast<LONG>(nWidth);
-		imageSize.cy = static_cast<LONG>(nHeight);
-
-		BITMAPINFO bitmapInfo{};
-		bitmapInfo.bmiHeader.biSize = sizeof bitmapInfo.bmiHeader;
-		bitmapInfo.bmiHeader.biWidth = static_cast<LONG>(nWidth);
-		bitmapInfo.bmiHeader.biHeight = -static_cast<LONG>(nHeight);
-		bitmapInfo.bmiHeader.biPlanes = 1;
-		bitmapInfo.bmiHeader.biBitCount = 32;
-		bitmapInfo.bmiHeader.biCompression = BI_RGB;
-
-		BYTE* ppvBits;
-		const auto newBitmap = CreateDIBSection(nullptr, &bitmapInfo, DIB_RGB_COLORS, reinterpret_cast<void**>(&ppvBits), nullptr, 0);
-		if (newBitmap == nullptr)
+		catch (const std::bad_alloc&)
 		{
-			bitmapSourceConverted->Release();
 			return E_OUTOFMEMORY;
 		}
-
-		const WICRect rect{ 0, 0, static_cast<INT>(nWidth), static_cast<INT>(nHeight) };
-		if (result = bitmapSourceConverted->CopyPixels(
-			&rect, static_cast<UINT>(stride), static_cast<UINT>(bufferSize), ppvBits); SUCCEEDED(result)) // It actually does conversion, not just copy. The converted pixels is store in newBitmap
-			outConvertedBitmap = newBitmap;
-		else
-			DeleteObject(newBitmap);
-
-		bitmapSourceConverted->Release();
-		return result;
-	}
-
-	HRESULT WicCreate32BitsPerPixelHBitmap(IStream* stream, HBITMAP& outNewBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize)
-	{
-		outNewBitmap = nullptr;
-
-		IWICImagingFactory* imagingFactory;
-		if (const auto result = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&imagingFactory)); FAILED(result))
-			return result;
-
-		IWICBitmapDecoder* decoder;
-		if (const auto result = imagingFactory->CreateDecoderFromStream(stream, &GUID_VendorMicrosoft, WICDecodeMetadataCacheOnDemand, &decoder); FAILED(result))
+		catch (...)
 		{
-			imagingFactory->Release();
-			return result;
-		}
-
-		IWICBitmapFrameDecode* bitmapFrameDecode;
-		if (const auto result = decoder->GetFrame(0, &bitmapFrameDecode); FAILED(result))
-		{
-			decoder->Release();
-			imagingFactory->Release();
-			return result;
-		}
-
-		const auto result = ConvertBitmapSourceTo32BppHBitmap(bitmapFrameDecode, imagingFactory, outNewBitmap, imageSize);
-		if (SUCCEEDED(result))
-			outAlphaType = WTSAT_ARGB;
-
-		bitmapFrameDecode->Release();
-		decoder->Release();
-		imagingFactory->Release();
-
-		return result;
-	}
-	
-	HRESULT LoadImageToHBitmap(const char* sourceImage, const size_t size, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, SIZE& imageSize)
-	{
-		const Utility::DataIStream imageIStream{ sourceImage, size };
-		const auto result = imageIStream.GetHResult();
-		return SUCCEEDED(result)
-			? WicCreate32BitsPerPixelHBitmap(imageIStream.GetIStream(), outBitmap, outAlphaType, imageSize)
-			: result;
-	}
-
-	bool ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize)
-	{
-		const auto width = imageSize.cx;
-		const auto height = imageSize.cy;
-		return width > 20 && height > 20 && (height >= width || (width / height < 2)); // If the width is two times or more of height then it is likely not the cover but some other image.
-	}
-
-	bool SaveImage(HBITMAP bitmapHandle, const wstring& fileName, const ImageFileType fileType)
-	{
-		ULONG_PTR gdiPlusToken;
-		const GdiplusStartupInput gdi_plus_startup_input;
-		GdiplusStartup(&gdiPlusToken, &gdi_plus_startup_input, nullptr);
-
-		unique_ptr<Bitmap> image{ new Bitmap(bitmapHandle, nullptr)};
-
-		CLSID encoderClsid;
-		GetEncoderClsid(GetMimeType(fileType), &encoderClsid);
-
-		image->Save(fileName.c_str(), &encoderClsid, nullptr);
-		image.reset();
-
-		GdiplusShutdown(gdiPlusToken);
-		return true;
-	}
-	
-	bool GetEncoderClsid(const wstring& mimeType, CLSID* outClsid)
-	{
-		unsigned encodersCount = 0;
-		unsigned encodersSize = 0;
-
-		GetImageEncodersSize(&encodersCount, &encodersSize);
-		if (encodersSize == 0)
-			return false;
-
-		const unique_ptr<char[]> imageCodecInfo{ new char[encodersSize] };
-		if (imageCodecInfo == nullptr)
-			return false;
-		const auto imageCodecInfoPtr = reinterpret_cast<ImageCodecInfo*>(imageCodecInfo.get());
-		GetImageEncoders(encodersCount, encodersSize, imageCodecInfoPtr);
-
-		for (UINT encoderIndex = 0; encoderIndex < encodersCount; ++encoderIndex)
-		{
-			if (!StrLib::EqualsCi(wstring{ imageCodecInfoPtr[encoderIndex].MimeType }, mimeType))
-				continue;
-			*outClsid = imageCodecInfoPtr[encoderIndex].Clsid;
-			return true;			
-		}
-
-		return false;
-	}
-
-	const wchar_t* GetMimeType(const ImageFileType fileType)
-	{
-		switch (fileType)
-		{
-		case ImageFileType::Bmp: return L"image/bmp";
-		case ImageFileType::Png: return L"image/png";
-		case ImageFileType::Jpg: return L"image/jpg";
-		default: return L"image/bmp";  // NOLINT(clang-diagnostic-covered-switch-default)
+			return E_FAIL;
 		}
 	}
-	
 
-
+	bool ImageSizeSatisfiesCoverConstraints(const SIZE& imageSize) noexcept
+	{
+		constexpr LONG MinimumCoverDimension = 20;
+		const auto width = static_cast<std::int64_t>(imageSize.cx);
+		const auto height = static_cast<std::int64_t>(imageSize.cy);
+		return width > MinimumCoverDimension && height > MinimumCoverDimension &&
+			(height >= width || width < height * 2);
+	}
 }

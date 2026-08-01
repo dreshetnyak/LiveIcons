@@ -13,6 +13,7 @@
     <ClCompile Include="..\LiveIcons\DataIStream.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\GlobalMem.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\Gfx.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\Log.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\ParserBase.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\ParserChm.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\ParserEpub.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
@@ -30,6 +31,7 @@
   <ItemGroup>
     <None Include="Fixtures\cbr-rar5-first-image.rar.base64"><Filter>Fixtures</Filter></None>
     <None Include="Fixtures\cbr-rar5-solid-first-image.rar.base64"><Filter>Fixtures</Filter></None>
+    <None Include="..\zlib\contrib\dotzlib\DotZLib.chm"><Filter>Fixtures</Filter></None>
     <None Include="Fixtures\README.md"><Filter>Fixtures</Filter></None>
   </ItemGroup>
 </Project>

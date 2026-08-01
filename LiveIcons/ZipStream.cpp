@@ -3,66 +3,180 @@
 
 namespace ZipStream
 {
-	voidpf CastFileNamePtrToIStream(voidpf opaque, const void* filename, int mode)
+	voidpf CastFileNamePtrToIStream(voidpf, const void* filename, int) noexcept
 	{
-		return new StreamInfo{ static_cast<IStream*>(const_cast<void*>(filename)), S_OK };
+		try
+		{
+			auto* const fileStream = static_cast<IStream*>(const_cast<void*>(filename));
+			if (fileStream == nullptr)
+				return nullptr;
+			auto streamInfo = std::make_unique<StreamInfo>();
+			streamInfo->FileStream = fileStream;
+			streamInfo->LastResult = S_OK;
+			return streamInfo.release();
+		}
+		catch (...)
+		{
+			return nullptr;
+		}
 	}
 
-	uLong Read(voidpf opaque, voidpf stream, void* buf, uLong size)
+	uLong Read(voidpf, voidpf stream, void* buf, const uLong size) noexcept
 	{
 		const auto streamInfo = static_cast<StreamInfo*>(stream);
-		ULONG bytesRead;
-		streamInfo->LastResult = streamInfo->FileStream->Read(buf, size, &bytesRead);
-		return SUCCEEDED(streamInfo->LastResult)
-			? bytesRead
-			: 0;
+		if (streamInfo == nullptr)
+			return 0;
+		if (streamInfo->FileStream == nullptr || (buf == nullptr && size != 0))
+		{
+			streamInfo->LastResult = E_POINTER;
+			return 0;
+		}
+
+		try
+		{
+			ULONG bytesRead{};
+			streamInfo->LastResult = streamInfo->FileStream->Read(buf, size, &bytesRead);
+			if (FAILED(streamInfo->LastResult))
+				return 0;
+			if (bytesRead > size)
+			{
+				streamInfo->LastResult = STG_E_READFAULT;
+				return 0;
+			}
+			return bytesRead;
+		}
+		catch (...)
+		{
+			streamInfo->LastResult = E_UNEXPECTED;
+			return 0;
+		}
 	}
 
-	uLong Write(voidpf opaque, voidpf stream, const void* buf, uLong size)
+	uLong Write(voidpf, voidpf stream, const void* buf, const uLong size) noexcept
 	{
 		const auto streamInfo = static_cast<StreamInfo*>(stream);
-		ULONG bytesWritten;
-		streamInfo->LastResult = streamInfo->FileStream->Write(buf, size, &bytesWritten);
-		return SUCCEEDED(streamInfo->LastResult)
-			? bytesWritten
-			: 0;
+		if (streamInfo == nullptr)
+			return 0;
+		if (streamInfo->FileStream == nullptr || (buf == nullptr && size != 0))
+		{
+			streamInfo->LastResult = E_POINTER;
+			return 0;
+		}
+
+		try
+		{
+			ULONG bytesWritten{};
+			streamInfo->LastResult = streamInfo->FileStream->Write(buf, size, &bytesWritten);
+			if (FAILED(streamInfo->LastResult))
+				return 0;
+			if (bytesWritten > size)
+			{
+				streamInfo->LastResult = STG_E_WRITEFAULT;
+				return 0;
+			}
+			return bytesWritten;
+		}
+		catch (...)
+		{
+			streamInfo->LastResult = E_UNEXPECTED;
+			return 0;
+		}
 	}
 
-	ZPOS64_T Tell(voidpf opaque, voidpf stream)
+	ZPOS64_T Tell(voidpf, voidpf stream) noexcept
 	{
 		const auto streamInfo = static_cast<StreamInfo*>(stream);
-		ULARGE_INTEGER currentPosition{};
-		streamInfo->LastResult = streamInfo->FileStream->Seek(LARGE_INTEGER{ {0, 0} }, STREAM_SEEK_CUR, &currentPosition);
-		return SUCCEEDED(streamInfo->LastResult)
-			? currentPosition.QuadPart
-			: static_cast<ZPOS64_T>(-1);
+		if (streamInfo == nullptr)
+			return static_cast<ZPOS64_T>(-1);
+		if (streamInfo->FileStream == nullptr)
+		{
+			streamInfo->LastResult = E_POINTER;
+			return static_cast<ZPOS64_T>(-1);
+		}
+
+		try
+		{
+			ULARGE_INTEGER currentPosition{};
+			streamInfo->LastResult = streamInfo->FileStream->Seek(
+				LARGE_INTEGER{ {0, 0} }, STREAM_SEEK_CUR, &currentPosition);
+			return SUCCEEDED(streamInfo->LastResult)
+				? currentPosition.QuadPart
+				: static_cast<ZPOS64_T>(-1);
+		}
+		catch (...)
+		{
+			streamInfo->LastResult = E_UNEXPECTED;
+			return static_cast<ZPOS64_T>(-1);
+		}
 	}
 
-	long Seek(voidpf opaque, voidpf stream, ZPOS64_T offset, int origin)
+	long Seek(voidpf, voidpf stream, const ZPOS64_T offset, const int origin) noexcept
 	{
 		const auto streamInfo = static_cast<StreamInfo*>(stream);
-		ULARGE_INTEGER currentPosition{};
-		LARGE_INTEGER newPosition;
-		newPosition.QuadPart = static_cast<LONGLONG>(offset);
-		const auto result = streamInfo->FileStream->Seek(newPosition, origin, &currentPosition);
-		return SUCCEEDED(result) ? 0 : -1;
+		if (streamInfo == nullptr)
+			return -1;
+		if (streamInfo->FileStream == nullptr)
+		{
+			streamInfo->LastResult = E_POINTER;
+			return -1;
+		}
+		if (origin < STREAM_SEEK_SET || origin > STREAM_SEEK_END)
+		{
+			streamInfo->LastResult = E_INVALIDARG;
+			return -1;
+		}
+		if (offset > static_cast<ZPOS64_T>((std::numeric_limits<LONGLONG>::max)()))
+		{
+			streamInfo->LastResult = STG_E_INVALIDFUNCTION;
+			return -1;
+		}
+
+		try
+		{
+			ULARGE_INTEGER currentPosition{};
+			LARGE_INTEGER newPosition{};
+			newPosition.QuadPart = static_cast<LONGLONG>(offset);
+			streamInfo->LastResult = streamInfo->FileStream->Seek(
+				newPosition, origin, &currentPosition);
+			return SUCCEEDED(streamInfo->LastResult) ? 0 : -1;
+		}
+		catch (...)
+		{
+			streamInfo->LastResult = E_UNEXPECTED;
+			return -1;
+		}
 	}
 
-	int Close(voidpf opaque, voidpf stream)
+	int Close(voidpf, voidpf stream) noexcept
 	{
-		const auto streamInfo = static_cast<StreamInfo*>(stream);
-		delete streamInfo;
+		try
+		{
+			delete static_cast<StreamInfo*>(stream);
+		}
+		catch (...)
+		{
+			return -1;
+		}
 		return 0;
 	}
 
-	int Error(voidpf opaque, voidpf stream)
+	int Error(voidpf, voidpf stream) noexcept
 	{
-		const auto streamInfo = static_cast<StreamInfo*>(stream);
-		return streamInfo != nullptr && streamInfo->LastResult == S_OK ? 0 : -1;
+		try
+		{
+			const auto streamInfo = static_cast<StreamInfo*>(stream);
+			return streamInfo != nullptr && SUCCEEDED(streamInfo->LastResult) ? 0 : -1;
+		}
+		catch (...)
+		{
+			return -1;
+		}
 	}
 
-	void SetIStreamHandlers(zlib_filefunc64_def* handlers)
+	void SetIStreamHandlers(zlib_filefunc64_def* handlers) noexcept
 	{
+		if (handlers == nullptr)
+			return;
 		handlers->zopen64_file = CastFileNamePtrToIStream;
 		handlers->zread_file = Read;
 		handlers->zwrite_file = Write;

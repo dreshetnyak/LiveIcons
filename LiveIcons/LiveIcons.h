@@ -1,31 +1,34 @@
 #pragma once
-#include "ParserBase.h"
-#include "ParserEpub.h"
 
-class LiveIcons : public IInitializeWithStream, public IThumbnailProvider
+#include <shobjidl.h>
+#include <thumbcache.h>
+
+#include "ComPtr.h"
+#include "ReferenceCounter.h"
+
+class LiveIcons final : public IInitializeWithStream, public IThumbnailProvider
 {
-    static std::vector<std::shared_ptr<Parser::Base>> Parsers;
-    ReferenceCounter LiveIconsReferences{};
-    IStream* Stream{};
+	ReferenceCounter LiveIconsReferences{ 1 };
+	ComPtr<IStream> Stream;
 
-	LiveIcons();
-    static std::wstring GetIStreamFileExtension(IStream* stream);
+	LiveIcons() noexcept;
 
 public:
-	static HRESULT CreateInstance(REFIID riid, void** ppv);
+	static HRESULT CreateInstance(REFIID riid, void** ppv) noexcept;
 
-    LiveIcons(const LiveIcons& liveIcons) = delete;
-    LiveIcons(LiveIcons&& liveIcons) = delete;
-    virtual ~LiveIcons();
+	LiveIcons(const LiveIcons&) = delete;
+	LiveIcons(LiveIcons&&) = delete;
+	LiveIcons& operator=(const LiveIcons&) = delete;
+	LiveIcons& operator=(LiveIcons&&) = delete;
+	~LiveIcons() noexcept;
 
-    // IUnknown
-    IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
-    IFACEMETHODIMP_(ULONG) AddRef() override;
-    IFACEMETHODIMP_(ULONG) Release() override;
+	IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv) noexcept override;
+	IFACEMETHODIMP_(ULONG) AddRef() noexcept override;
+	IFACEMETHODIMP_(ULONG) Release() noexcept override;
 
-    // IInitializeWithStream
-    IFACEMETHODIMP Initialize(IStream* stream, DWORD grfMode) override;
-
-    // IThumbnailProvider
-    IFACEMETHODIMP GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_ALPHATYPE* putAlpha) override;
+	IFACEMETHODIMP Initialize(IStream* stream, DWORD grfMode) noexcept override;
+	IFACEMETHODIMP GetThumbnail(
+		UINT cx,
+		HBITMAP* outBitmapHandle,
+		WTS_ALPHATYPE* outAlpha) noexcept override;
 };

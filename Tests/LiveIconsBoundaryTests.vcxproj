@@ -22,8 +22,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{9D388F52-4026-4BE2-B8D4-D17294E55392}</ProjectGuid>
-    <RootNamespace>LiveIconsTests</RootNamespace>
+    <ProjectGuid>{6A4EA363-89D7-428A-95C1-BD4229E32C53}</ProjectGuid>
+    <RootNamespace>LiveIconsBoundaryTests</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
 
@@ -55,27 +55,25 @@
 
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
-    <TargetName>LiveIconsTests</TargetName>
-    <LiveIconsEnableCbrTests Condition="'$(LiveIconsEnableCbrTests)'==''">true</LiveIconsEnableCbrTests>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\Boundary\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>LiveIconsBoundaryTests</TargetName>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\LiveIcons;$(ProjectDir)..\chmlib\src;$(ProjectDir)..\libmobi\src;$(ProjectDir)..\zlib;$(ProjectDir)..\zlib\contrib\minizip;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NOMINMAX;_CONSOLE;_CRT_SECURE_NO_WARNINGS;USE_XMLWRITER=1;USE_ENCRYPTION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\LiveIcons;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NOMINMAX;WIN32_LEAN_AND_MEAN;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;Crypt32.lib;windowscodecs.lib;ole32.lib;gdi32.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 
@@ -90,6 +88,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -105,67 +104,14 @@
     </Link>
   </ItemDefinitionGroup>
 
-  <ItemDefinitionGroup Condition="'$(LiveIconsEnableCbrTests)'=='true'">
-    <ClCompile>
-      <PreprocessorDefinitions>LIVEICONS_TEST_ENABLE_CBR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-
   <ItemGroup>
-    <ClCompile Include="LiveIconsTests.cpp" />
-    <ClCompile Include="..\LiveIcons\DataIStream.cpp" />
-    <ClCompile Include="..\LiveIcons\GlobalMem.cpp" />
-    <ClCompile Include="..\LiveIcons\Gfx.cpp" />
-    <ClCompile Include="..\LiveIcons\Log.cpp" />
-    <ClCompile Include="..\LiveIcons\ParserBase.cpp" />
-    <ClCompile Include="..\LiveIcons\ParserChm.cpp" />
-    <ClCompile Include="..\LiveIcons\ParserEpub.cpp" />
-    <ClCompile Include="..\LiveIcons\ParserFb2.cpp" />
-    <ClCompile Include="..\LiveIcons\ParserMobi.cpp" />
-    <ClCompile Include="..\LiveIcons\RamFile.cpp" />
-    <ClCompile Include="..\LiveIcons\StrLib.cpp" />
-    <ClCompile Include="..\LiveIcons\Utility.cpp" />
-    <ClCompile Include="..\LiveIcons\XmlDocument.cpp" />
-    <ClCompile Include="..\LiveIcons\ZipArchive.cpp" />
-    <ClCompile Include="..\LiveIcons\ZipCache.cpp" />
-    <ClCompile Include="..\LiveIcons\ZipStream.cpp" />
-    <ClCompile Include="..\LiveIcons\ParserCbr.cpp"
-               Condition="'$(LiveIconsEnableCbrTests)'=='true' and Exists('$(ProjectDir)..\LiveIcons\ParserCbr.cpp')" />
+    <ClCompile Include="LiveIconsBoundaryTests.cpp" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Fixtures\cbr-rar5-first-image.rar.base64">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Fixtures\cbr-rar5-first-image.rar.base64</TargetPath>
-    </None>
-    <None Include="Fixtures\cbr-rar5-solid-first-image.rar.base64">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Fixtures\cbr-rar5-solid-first-image.rar.base64</TargetPath>
-    </None>
-    <None Include="..\zlib\contrib\dotzlib\DotZLib.chm">
-      <Link>Fixtures\DotZLib.chm</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Fixtures\DotZLib.chm</TargetPath>
-    </None>
-    <None Include="Fixtures\README.md" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\chmlib\chmlib.vcxproj">
-      <Project>{0BC6AE4C-EB98-4E48-92D1-B026195ABB65}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\libmobi\msvc\libmobi.vcxproj">
-      <Project>{A48F597C-ADBC-499E-B282-0F8A2B1A4B5F}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\zlib\contrib\vstudio\liveicons\minizip.vcxproj">
-      <Project>{48CDD9DC-E09F-4135-9C0C-4FE50C3C654B}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\zlib\contrib\vstudio\liveicons\zlibstat.vcxproj">
-      <Project>{745DEC58-EBB3-47A9-A9B8-4C6627C01BF8}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\unrar\UnRARDll.vcxproj"
-                      Condition="'$(LiveIconsEnableCbrTests)'=='true'">
-      <Project>{E815C46C-36C4-499F-BBC2-E772C6B17971}</Project>
+    <ProjectReference Include="..\LiveIcons\LiveIcons.vcxproj">
+      <Project>{E5FBD417-24B0-4B22-B4ED-D16A90D08E17}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
 

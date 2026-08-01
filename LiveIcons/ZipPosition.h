@@ -1,4 +1,6 @@
 #pragma once
+#include <cstdint>
+
 #include "zip.h"
 
 namespace Zip
@@ -14,9 +16,9 @@ namespace Zip
 	public:
 		const string FilePath;
 		const size_t FileIndex;			// A separate index must be used instead of num_file_ because sometimes num_file_ goes out of order.
-		const size_t UncompressedSize;
+		const std::uint64_t UncompressedSize;
 
-		explicit Position(const unz64_file_pos filePosition, string filePath, const size_t fileIndex, const size_t uncompressedSize) :
+		explicit Position(const unz64_file_pos filePosition, string filePath, const size_t fileIndex, const std::uint64_t uncompressedSize) :
 			FilePosition(filePosition),
 			FilePath(std::move(filePath)),
 			FileIndex(fileIndex),

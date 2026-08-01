@@ -1,8 +1,20 @@
-# CBR archive regression fixtures
+# Regression fixtures
+
+## CHM fixture
+
+The test project links `zlib/contrib/dotzlib/DotZLib.chm` into its output
+fixture directory. This existing zlib documentation file verifies a valid
+CHMLib directory and compressed-entry read. In-memory mutations of its PMGL
+directory verify bounded cyclic-page rejection and empty-path rejection; the
+source file is never modified.
 
 ## Non-solid RAR5 archive
 
 `cbr-rar5-first-image.rar.base64` is a text-safe encoding of a 7,444-byte RAR5 archive. It is intended to verify that the CBR thumbnail parser skips a non-image member and selects the first image member.
+
+The test suite also makes checksum-correct in-memory mutations of this fixture
+to exercise oversized-dictionary and multi-volume rejection without retaining
+additional archives.
 
 Decoded archive SHA-256:
 

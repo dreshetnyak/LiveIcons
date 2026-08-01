@@ -1,4 +1,7 @@
 #pragma once
+#include <span>
+#include <string_view>
+
 #include "ParserBase.h"
 #include "XmlDocument.h"
 #include "chm_lib.h"
@@ -7,14 +10,11 @@ namespace Parser
 {
 	class Chm final : public Base
 	{
-		typedef struct IStreamReaderCtx { IStream* Stream; } IStreamReaderCtx;
-		static vector<string> ImageFileExtensions;
-		static vector<string> HtmlExtensions;
-		static vector<string> CoverImageFileEnds;
-		static vector<string> TocFileNames;
-		static vector<string> OtherTocFileNames;
-		static vector<string> CoverImageFileNotEnds;
-		static vector<string> CoverImageFileContains;
+		struct IStreamReaderCtx final
+		{
+			IStream* Stream;
+			ULONGLONG Size;
+		};
 
 		[[nodiscard]] Result Parse(const vector<char>& fileContent) const;
 		bool TryGetCoverBitmap(IStream* stream, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType);
@@ -29,12 +29,12 @@ namespace Parser
 		bool TryGetCoverFromImageTag(chm_file& chmFile, const Xml::Document& xml, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType);
 		void PreparePath(string& path) const;
 		bool TryGetCoverBitmap(chm_file& chmFile, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType, const function<bool(const string&)>& pathMatch);
-		bool TryGetCoverFromHtml(chm_file& chmFile, const vector<string>& endsWithStrings, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType);
+		bool TryGetCoverFromHtml(chm_file& chmFile, std::span<const std::string_view> endsWithStrings, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType);
 		bool TryGetFileMatchContent(chm_file& chmFile, int& fileIndex, vector<char>& outFileContent, const function<bool(const string&)>& pathMatch);
-		bool TryGetFileEndsWithContent(chm_file& chmFile, int& fileIndex, vector<char>& outFileContent, const string& endsWith);
+		bool TryGetFileEndsWithContent(chm_file& chmFile, int& fileIndex, vector<char>& outFileContent, std::string_view endsWith);
 		static bool TryLoadBitmap(const vector<char>& coverImage, HBITMAP& outBitmap, WTS_ALPHATYPE& outAlphaType);
 		bool TryReadFile(chm_file& chmFile, chm_entry& fileEntry, vector<char>& outFileContent);
-		static int64_t IStreamReader(void* ctxPtr, void* buffer, const int64_t offset, const int64_t size);
+		static int64_t IStreamReader(void* ctxPtr, void* buffer, int64_t offset, int64_t size) noexcept;
 
 	public:
 		bool CanParse(const wstring& fileExtension) override;

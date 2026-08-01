@@ -2,14 +2,15 @@
 
 This file records the dependency baseline selected while reviving LiveIcons in
 August 2026. Each modified dependency is maintained on a small `liveicons-*`
-branch in the existing fork. The branch must contain integration/build changes
-only; format-specific behavior belongs in the LiveIcons repository.
+branch in the existing fork. Those branches are limited to integration/build
+changes and unavoidable malformed-input safety fixes; format feature work
+belongs in the LiveIcons repository.
 
 | Dependency | Previous LiveIcons pin | Selected upstream source | LiveIcons fork pin |
 | --- | --- | --- | --- |
 | zlib | `7bb473423c7f958d88a393c8dbe5c84c9db7a7fb` (1.2.13) | zlib 1.3.2, `da607da739fa6047df13e66a2af6b8bec7c2a498` | `liveicons-1.3.2` at `f6cc4a14179031c237b894175f1ebb2320969af1` |
-| libmobi | `7f7c6a1a0725a445218892a85f8324b5d3cf9cae` (0.11) | public 0.12 head, `906274205c11944b628da1c553b255acb1af7c55` | `liveicons-0.12` at `559183f1d6d4ab627aa56511f98a390993ac3b07` |
-| CHMLib | `8cad6e629cee1a5a7b769cde46e262cae9c6c055` | original repository tip `2bef8d063ec7d88a8de6fd9f0513ea42ac0fa21f` (already an ancestor) | `liveicons-0.40a` at `c3bfff838df20b0a78329fc902a7be4bbbe7c27d` |
+| libmobi | `7f7c6a1a0725a445218892a85f8324b5d3cf9cae` (0.11) | public 0.12 head, `906274205c11944b628da1c553b255acb1af7c55` | `liveicons-0.12` at `2416e40c3c942d5ea137fc8d5920e2127307c1e6` |
+| CHMLib | `8cad6e629cee1a5a7b769cde46e262cae9c6c055` | original repository tip `2bef8d063ec7d88a8de6fd9f0513ea42ac0fa21f` (already an ancestor) | `liveicons-0.40a` at `df46c6290253861bca82f4e2b19b75954a19db44` |
 | UnRAR | not present on `master`; unfinished CBR work used `0a0d310` (6.21) | RARLAB `unrarsrc-7.2.7` / product 7.23, mirrored by `d861246` | `liveicons-7.23` at `48e58525ae24e9fa99bc3416edc1047e4f2b68ef` |
 
 ## Preserved adaptations
@@ -27,7 +28,9 @@ only; format-specific behavior belongs in the LiveIcons repository.
 
 ### libmobi
 
-- Upstream runtime sources and public API are unchanged.
+- The public API is unchanged. Runtime changes are narrowly scoped malformed-
+  input guards for zero-length HUFF codes, disproportionate CDIC offset tables,
+  truncated DRM-v1 keys, and hybrid-document allocation failure.
 - The VS project builds a v143 static library for Debug/Release and Win32/x64.
 - The internal XML writer and encryption support remain enabled.
 - zlib is referenced through the LiveIcons zlib wrapper. Obsolete NuGet and
@@ -40,8 +43,12 @@ contains the later Sumatra-derived reader modernization required by
 `ParserChm`, followed by the existing VS2022 build project and LiveIcons cover
 heuristics. Replacing it with the original repository tip would be a
 functional regression, so the runtime source is intentionally retained. The
-new local commit changes only `.gitignore` so VS build output does not dirty the
-submodule.
+LiveIcons branch keeps the VS build integration and adds narrowly scoped input
+safety guards: bounded directory traversal and metadata allocation, checked
+offset/control-data arithmetic, validated LZX geometry, allocation-failure
+handling, and complete entry/cache cleanup. The ITSP `index_tail`/`num_blocks`
+field mapping was corrected so those bounds also preserve valid CHM parsing.
+No format feature was added.
 
 ### UnRAR
 
@@ -68,9 +75,12 @@ submodule.
 - UnRAR: Debug, Release, and `release_nocrypt` on Win32/x64.
 - LiveIcons: `LiveIcons.dll` rebuilt from the complete solution in Debug and
   Release on Win32/x64.
-- Parser regression suite: 14 deterministic checks pass in all four
+- Parser/hardening suite: 29 deterministic checks pass in all four
   configurations, including RAR5 non-solid and solid CBR parsing by path and
-  `IStream`, nonzero stream-position restoration, and malformed-CBR failure.
+  `IStream`, adversarial stream behavior, native CHMLib/libmobi guards, RAR
+  dictionary and volume policy, resource limits, stream-position restoration,
+  and malformed-input failure. The separate DLL boundary suite adds seven COM
+  lifetime, exception-firewall, and logging checks.
 
 ## Upstream references
 

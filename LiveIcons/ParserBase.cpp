@@ -3,17 +3,17 @@
 
 namespace Parser
 {
-	bool Base::CanParse(const wstring& fileExtension)
+	bool Base::CanParse(const wstring&)
 	{
 		return false;
 	}
 
-	Result Base::Parse(const wstring& fileName)
+	Result Base::Parse(const wstring&)
 	{		
 		return Result{ E_NOTIMPL };
 	}
 
-	Result Base::Parse(IStream* stream)
+	Result Base::Parse(IStream*)
 	{
 		return Result{ E_NOTIMPL };
 	}

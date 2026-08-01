@@ -1,9 +1,19 @@
 #include "pch.h"
 #include "ParserEpub.h"
 
-namespace Parser
+#include <array>
+#include <string_view>
+
+namespace
 {
-	vector<string> Epub::PossibleRootFileLocations
+	struct CoverPathHint final
+	{
+		std::string_view TagName;
+		std::string_view Contains;
+		std::string_view PathAttribute;
+	};
+
+	constexpr std::array<std::string_view, 8> PossibleRootFileLocations
 	{
 		"OEBPS/content.opf",
 		"OPS/content.opf",
@@ -15,45 +25,87 @@ namespace Parser
 		"OEBPS/opf.opf"
 	};
 
-	vector<string> Epub::ImageFileExtensions
+	constexpr std::array<std::string_view, 10> ImageFileExtensions
 	{
-		".bmp",
-		".ico",
-		".gif",
-		".jpg",
-		".jpe",
-		".jfif",
-		".jpeg",
-		".png",
-		".tif",
-		".tiff"
+		".bmp", ".ico", ".gif", ".jpg", ".jpe", ".jfif", ".jpeg", ".png", ".tif", ".tiff"
 	};
 
-	vector<string> Epub::HtmlFileExtensions
+	constexpr std::array<std::string_view, 4> HtmlFileExtensions
 	{
-		".html",
-		".xhtml",
-		".xml",
-		".htm"
+		".html", ".xhtml", ".xml", ".htm"
 	};
 
-	vector<tuple<string, string, string>> Epub::XmlTagsThatMayContainCoverPath
-	{	//item1: tag name; item2: contained string; item3: attribute that has the path
-		{"item", "cover", "href"},
-		{"reference", "\"cover\"", "href"},
-		{"item", "id=\"cvi\"", "href"},	//Points to an html
-		{"reference", "\"title-page\"", "href"} //Points to an html
+	constexpr std::array<CoverPathHint, 4> XmlTagsThatMayContainCoverPath
+	{
+		CoverPathHint{ "item", "cover", "href" },
+		CoverPathHint{ "reference", "\"cover\"", "href" },
+		CoverPathHint{ "item", "id=\"cvi\"", "href" },
+		CoverPathHint{ "reference", "\"title-page\"", "href" }
 	};
 
-	vector<tuple<string, string, string>> Epub::HtmlTagsThatMayContainCoverPath
-	{	//item1: tag name; item2: contained string; item3: attribute that has the path
-		{"image", "href=", "href"},
-		{"img", "src=", "src"},
+	constexpr std::array<CoverPathHint, 2> HtmlTagsThatMayContainCoverPath
+	{
+		CoverPathHint{ "image", "href=", "href" },
+		CoverPathHint{ "img", "src=", "src" }
 	};
 
+	template<typename Character>
+	[[nodiscard]] bool EqualsAsciiCaseInsensitive(
+		const std::basic_string_view<Character> left,
+		const std::basic_string_view<Character> right) noexcept
+	{
+		if (left.size() != right.size())
+			return false;
+		for (size_t index = 0; index < left.size(); ++index)
+		{
+			Character leftCharacter = left[index];
+			Character rightCharacter = right[index];
+			if (leftCharacter >= static_cast<Character>('A') && leftCharacter <= static_cast<Character>('Z'))
+				leftCharacter += static_cast<Character>('a' - 'A');
+			if (rightCharacter >= static_cast<Character>('A') && rightCharacter <= static_cast<Character>('Z'))
+				rightCharacter += static_cast<Character>('a' - 'A');
+			if (leftCharacter != rightCharacter)
+				return false;
+		}
+		return true;
+	}
+
+	template<size_t Size>
+	[[nodiscard]] bool EqualsOneOfAsciiCaseInsensitive(
+		const std::string_view value,
+		const std::array<std::string_view, Size>& candidates) noexcept
+	{
+		return std::ranges::any_of(candidates, [value](const std::string_view candidate)
+		{
+			return EqualsAsciiCaseInsensitive(value, candidate);
+		});
+	}
+
+	[[nodiscard]] bool EndsWithAsciiCaseInsensitive(
+		const std::string_view value, const std::string_view suffix) noexcept
+	{
+		return value.size() >= suffix.size() && EqualsAsciiCaseInsensitive(
+			value.substr(value.size() - suffix.size()), suffix);
+	}
+
+	template<size_t Size>
+	[[nodiscard]] bool EndsWithOneOfAsciiCaseInsensitive(
+		const std::string_view value,
+		const std::array<std::string_view, Size>& suffixes) noexcept
+	{
+		return std::ranges::any_of(suffixes, [value](const std::string_view suffix)
+		{
+			return EndsWithAsciiCaseInsensitive(value, suffix);
+		});
+	}
+}
+
+namespace Parser
+{
 	bool Epub::CanParse(const wstring& fileExtension)
 	{
-		return StrLib::EqualsCi(fileExtension, wstring{ L".epub" });
+		return EqualsAsciiCaseInsensitive(
+			std::wstring_view{ fileExtension }, std::wstring_view{ L".epub" });
 	}
 
 	Result Epub::Parse(IStream* stream)
@@ -74,7 +126,8 @@ namespace Parser
 	{
 		auto& zip = *epub.Zip;
 		if (int result; (result = zip.Open()) != UNZ_OK)
-			return Result{ ERROR_CANT_ACCESS_FILE, std::format(L"Zip opening error: {}", Zip::GetErrorMessage(result)) };
+			return Result{ HRESULT_FROM_WIN32(ERROR_CANT_ACCESS_FILE),
+				std::format(L"Zip opening error: {}", Zip::GetErrorMessage(result)) };
 
 		vector<char> rootFileContentData;
 		static_cast<void>(GetRootFileContent(epub, epub.RootFilePath, rootFileContentData));
@@ -82,6 +135,9 @@ namespace Parser
 		string title;
 		if (!rootFileContentData.empty())
 			epub.RootFileXml->GetElementContent("title", 0, title);
+		// Complete the only fallible title conversion before a parser helper can
+		// create an HBITMAP. Once a bitmap exists, Result must adopt it immediately.
+		std::wstring wideTitle = StrLib::ToWstring(title);
 
 		string coverPath{};
 		vector<char> coverImageBytes{};
@@ -89,10 +145,10 @@ namespace Parser
 		WTS_ALPHATYPE coverBitmapAlpha{};
 		
 		if (GetCoverPath(epub, coverPath) && zip.ReadPath(coverPath, coverImageBytes) && GetCoverBitmap(coverImageBytes, coverBitmap, coverBitmapAlpha) == S_OK)
-			return Result{ StrLib::ToWstring(title), coverBitmap, coverBitmapAlpha };
+			return Result{ std::move(wideTitle), coverBitmap, coverBitmapAlpha };
 
 		return GetCoverFromFirstImage(zip, coverBitmap, coverBitmapAlpha)
-			? Result{ StrLib::ToWstring(title), coverBitmap, coverBitmapAlpha }
+			? Result{ std::move(wideTitle), coverBitmap, coverBitmapAlpha }
 			: Result{ E_FAIL, L"Unable to parse the EPUB file" };
 	}
 
@@ -121,9 +177,10 @@ namespace Parser
 		}
 
 		// Try to locate the cover path tags in the root file in the common places
-		for (const auto& [tag_name, contains_str, path_attribute_name] : XmlTagsThatMayContainCoverPath)
+		for (const auto& [tagName, contains, pathAttribute] : XmlTagsThatMayContainCoverPath)
 		{
-			if (!rootFileXml.GetTagAttributeValue(tag_name, contains_str, path_attribute_name, path) ||
+			if (!rootFileXml.GetTagAttributeValue(
+				std::string{ tagName }, std::string{ contains }, std::string{ pathAttribute }, path) ||
 				!GetImagePath(zip, rootFilePath, path))
 				continue;			
 			outCoverFilePath = path;
@@ -190,12 +247,15 @@ namespace Parser
 	bool Epub::GetImagePath(const Zip::Archive& zip, const string& currentPath, string& imagePath) const
 	{
 		auto absoluteImagePath = Utility::ToAbsolutePath(currentPath, imagePath);
-		if (StrLib::EndsWith(absoluteImagePath, HtmlFileExtensions))
+		if (absoluteImagePath.empty())
+			return false;
+		if (EndsWithOneOfAsciiCaseInsensitive(absoluteImagePath, HtmlFileExtensions))
 		{
 			if (!GetCoverPathFromHtml(zip, absoluteImagePath, absoluteImagePath))
 				return false;
 		}
-		else if (!StrLib::EndsWith(absoluteImagePath, ImageFileExtensions) || !zip.FileExists(absoluteImagePath))
+		else if (!EndsWithOneOfAsciiCaseInsensitive(absoluteImagePath, ImageFileExtensions) ||
+			!zip.FileExists(absoluteImagePath))
 			return false;
 
 		imagePath = absoluteImagePath;
@@ -210,14 +270,15 @@ namespace Parser
 		const auto html{ Xml::Document{string{htmlFileContent.begin(), htmlFileContent.end()}} };
 
 		string newPath;
-		for (const auto& [tagName, containsStr, pathAttributeName] : HtmlTagsThatMayContainCoverPath)
+		for (const auto& [tagName, contains, pathAttribute] : HtmlTagsThatMayContainCoverPath)
 		{
-			if (!html.GetTagAttributeValue(tagName, containsStr, pathAttributeName, newPath) ||
-				!StrLib::EndsWith(newPath, ImageFileExtensions))
+			if (!html.GetTagAttributeValue(
+				std::string{ tagName }, std::string{ contains }, std::string{ pathAttribute }, newPath) ||
+				!EndsWithOneOfAsciiCaseInsensitive(newPath, ImageFileExtensions))
 				continue;
 
 			newPath = Utility::ToAbsolutePath(htmlPath, newPath);
-			if (!zip.FileExists(newPath))
+			if (newPath.empty() || !zip.FileExists(newPath))
 				continue;
 
 			outCoverFilePath = newPath;
@@ -230,7 +291,11 @@ namespace Parser
 	bool Epub::GetCoverPathFromNcx(const ParsingContext& epub, string& outCoverImagePath) const
 	{
 		const auto& zip = *epub.Zip;
-		const auto filePosition = zip.Find([&](const string& path) -> bool { return StrLib::EndsWith(path, static_cast<const basic_string<char>>(".ncx")); });
+		const auto filePosition = zip.Find([&](const string& path) -> bool
+		{
+			constexpr std::string_view extension{ ".ncx" };
+			return EndsWithAsciiCaseInsensitive(path, extension);
+		});
 		if (filePosition == END_OF_LIST)
 			return false;
 			
@@ -272,7 +337,10 @@ namespace Parser
 		vector<const Zip::Position*> images;
 		const Zip::Position* filePosition = nullptr;
 		for (size_t fileIndex = 0, positionIndex = 0; 
-			fileIndex < 5 && (filePosition = zip.Find([&](const string& path) -> bool { return StrLib::EndsWith(path, ImageFileExtensions); }, positionIndex)) != nullptr;
+			fileIndex < 5 && (filePosition = zip.Find([&](const string& path) -> bool
+			{
+				return EndsWithOneOfAsciiCaseInsensitive(path, ImageFileExtensions);
+			}, positionIndex)) != nullptr;
 			positionIndex = static_cast<size_t>(filePosition->FileIndex) + 1, ++fileIndex)
 		{
 			images.push_back(filePosition);
@@ -291,6 +359,8 @@ namespace Parser
 				return true;
 			
 			DeleteObject(coverBitmap);
+			coverBitmap = nullptr;
+			coverBitmapAlpha = WTSAT_UNKNOWN;
 		}
 
 		return false;
@@ -304,6 +374,8 @@ namespace Parser
 		if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
 			return S_OK;
 		DeleteObject(coverBitmap);
+		coverBitmap = nullptr;
+		coverBitmapAlpha = WTSAT_UNKNOWN;
 		return S_FALSE;
 	}
 
@@ -316,7 +388,7 @@ namespace Parser
 
 	bool Epub::GetCoverPathFromMetaFile(const ParsingContext& epub, const string& coverMetaTagContent, string& outCoverFilePath)
 	{
-		if (!StrLib::EndsWith(coverMetaTagContent, ImageFileExtensions) || 
+		if (!EndsWithOneOfAsciiCaseInsensitive(coverMetaTagContent, ImageFileExtensions) ||
 			!epub.Zip->FileExists(coverMetaTagContent))
 			return false;
 		outCoverFilePath = coverMetaTagContent;
@@ -334,8 +406,14 @@ namespace Parser
 	{
 		const auto& zip = *epub.Zip;
 		return GetRootFilePathFromContainer(epub, outRootFilePath) && zip.ReadPath(outRootFilePath, outRootFileContent) ||
-			zip.ReadMatching(outRootFilePath, outRootFileContent, [&](const string& path) -> bool { return StrLib::EqualsCiOneOf(path, PossibleRootFileLocations); }) ||
-			zip.ReadMatching(outRootFilePath, outRootFileContent, [&](const string& path) -> bool { return StrLib::EndsWith(path, static_cast<const basic_string<char>>(".opf")); });
+			zip.ReadMatching(outRootFilePath, outRootFileContent, [&](const string& path) -> bool
+			{
+				return EqualsOneOfAsciiCaseInsensitive(path, PossibleRootFileLocations);
+			}) ||
+			zip.ReadMatching(outRootFilePath, outRootFileContent, [&](const string& path) -> bool
+			{
+				return EndsWithAsciiCaseInsensitive(path, ".opf");
+			});
 	}
 
 	bool Epub::GetRootFilePathFromContainer(const ParsingContext& epub, string& outRootFilePath)

@@ -1,57 +1,87 @@
 #include "pch.h"
 #include "Registry.h"
 
-#include "Utility.h"
+#include <limits>
+
+namespace
+{
+	class RegistryKey final
+	{
+		HKEY Key{};
+
+	public:
+		RegistryKey() noexcept = default;
+		RegistryKey(const RegistryKey&) = delete;
+		RegistryKey& operator=(const RegistryKey&) = delete;
+		~RegistryKey() noexcept
+		{
+			if (Key != nullptr)
+				RegCloseKey(Key);
+		}
+
+		[[nodiscard]] HKEY Get() const noexcept { return Key; }
+		[[nodiscard]] HKEY* Put() noexcept { return &Key; }
+	};
+
+	[[nodiscard]] HRESULT FromRegistryStatus(const LSTATUS status) noexcept
+	{
+		return status == ERROR_SUCCESS ? S_OK : HRESULT_FROM_WIN32(status);
+	}
+}
 
 namespace Registry
 {
-	HRESULT SetEntry(const Entry& registryEntry)
+	HRESULT SetEntry(const Entry& entry) noexcept
 	{
-		constexpr char emptyStr[]{ '\x0' };
-		Log::Write(std::format("Registry::SetEntry: Key Name: '{}'; Value Name: '{}'; Data: '{}'", 
-			registryEntry.KeyName != nullptr ? StrLib::ToString(registryEntry.KeyName) : emptyStr,
-			registryEntry.ValueName != nullptr ? StrLib::ToString(registryEntry.ValueName) : emptyStr,
-			registryEntry.Data != nullptr ? StrLib::ToString(registryEntry.Data) : emptyStr));
+		if (entry.RootKey == nullptr || entry.KeyName == nullptr || entry.Data == nullptr)
+			return E_INVALIDARG;
 
-		HKEY hKey;
-		auto result = HRESULT_FROM_WIN32(RegCreateKeyExW(registryEntry.HKeyRoot, registryEntry.KeyName, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &hKey, nullptr));
-		if (FAILED(result))
-			return result;
+		const std::size_t characterCount = std::wcslen(entry.Data) + 1;
+		if (characterCount > (std::numeric_limits<DWORD>::max)() / sizeof(wchar_t))
+			return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
 
-		result = HRESULT_FROM_WIN32(RegSetValueExW(
-			hKey,
-			registryEntry.ValueName,
+		RegistryKey key;
+		const LSTATUS createResult = RegCreateKeyExW(
+			entry.RootKey,
+			entry.KeyName,
+			0,
+			nullptr,
+			REG_OPTION_NON_VOLATILE,
+			KEY_SET_VALUE,
+			nullptr,
+			key.Put(),
+			nullptr);
+		if (createResult != ERROR_SUCCESS)
+			return FromRegistryStatus(createResult);
+
+		return FromRegistryStatus(RegSetValueExW(
+			key.Get(),
+			entry.ValueName,
 			0,
 			REG_SZ,
-			reinterpret_cast<LPBYTE>(const_cast<wchar_t*>(registryEntry.Data)),
-			(static_cast<DWORD>(wcslen(registryEntry.Data)) + 1) * sizeof(WCHAR)));
-
-		RegCloseKey(hKey);
-		return result;
+			reinterpret_cast<const BYTE*>(entry.Data),
+			static_cast<DWORD>(characterCount * sizeof(wchar_t))));
 	}
 
-	HRESULT SetEntries(const std::vector<Entry>& registryEntries)
+	HRESULT SetEntries(const std::span<const Entry> entries) noexcept
 	{
-		for (auto entry = registryEntries.begin(); entry != registryEntries.end(); ++entry)
-		{
-			if (const auto result = SetEntry(*entry); FAILED(result))
+		for (const auto& entry : entries)
+			if (const HRESULT result = SetEntry(entry); FAILED(result))
 				return result;
-		}
-
 		return S_OK;
 	}
 
-	HRESULT DeleteRegistryPaths(const std::vector<PCWSTR>& paths)
+	HRESULT DeleteRegistryPaths(const std::span<const PCWSTR> paths) noexcept
 	{
-		constexpr auto fileNotFound = HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
-		for (auto path = paths.begin(); path != paths.end(); ++path)
+		for (const PCWSTR path : paths)
 		{
-			constexpr char emptyStr[]{ '\x0' };
-			Log::Write(std::format("Registry::DeleteRegistryPaths: Path: '{}'", *path != nullptr ? StrLib::ToString(*path) : emptyStr));
-			if (const auto result = HRESULT_FROM_WIN32(RegDeleteTreeW(HKEY_CURRENT_USER, *path)); result != fileNotFound && FAILED(result))
-				return result;
+			if (path == nullptr)
+				return E_INVALIDARG;
+			const LSTATUS status = RegDeleteTreeW(HKEY_CURRENT_USER, path);
+			if (status != ERROR_SUCCESS && status != ERROR_FILE_NOT_FOUND &&
+				status != ERROR_PATH_NOT_FOUND)
+				return FromRegistryStatus(status);
 		}
-
 		return S_OK;
 	}
 }

@@ -3,7 +3,7 @@
 
 namespace Utility
 {
-	GlobalMem::~GlobalMem()
+	GlobalMem::~GlobalMem() noexcept
 	{
 		if (MemHandle == nullptr)
 			return;
@@ -12,7 +12,7 @@ namespace Utility
 		GlobalFree(MemHandle);
 	}
 
-	HRESULT GlobalMem::AllocateAndLock(const size_t size)
+	HRESULT GlobalMem::AllocateAndLock(const size_t size) noexcept
 	{
 		const auto result = Allocate(size);
 		return SUCCEEDED(result)
@@ -20,29 +20,39 @@ namespace Utility
 			: result;
 	}
 
-	HRESULT GlobalMem::Allocate(const size_t size)
+	HRESULT GlobalMem::Allocate(const size_t size) noexcept
 	{
 		if (MemHandle != nullptr)
 			return E_INVALIDARG;
+		if (size == 0)
+			return E_INVALIDARG;
 		return (MemHandle = GlobalAlloc(GMEM_MOVEABLE | GMEM_NODISCARD, size)) != nullptr
 			? S_OK
-			: HRESULT_FROM_WIN32(GetLastError());
+			: E_OUTOFMEMORY;
 	}
 
-	HRESULT GlobalMem::Lock()
+	HRESULT GlobalMem::Lock() noexcept
 	{
-		return MemPtr != nullptr || (MemPtr = GlobalLock(MemHandle)) != nullptr
-			? S_OK
-			: HRESULT_FROM_WIN32(GetLastError());
+		if (MemHandle == nullptr)
+			return E_UNEXPECTED;
+		SetLastError(NO_ERROR);
+		if (MemPtr != nullptr || (MemPtr = GlobalLock(MemHandle)) != nullptr)
+			return S_OK;
+		const DWORD error = GetLastError();
+		return HRESULT_FROM_WIN32(error != NO_ERROR ? error : ERROR_GEN_FAILURE);
 	}
 
-	HRESULT GlobalMem::Unlock()
+	HRESULT GlobalMem::Unlock() noexcept
 	{
 		if (MemPtr == nullptr)
 			return S_OK;
 
-		static_cast<void>(GlobalUnlock(MemHandle));		
-		if (const auto result = GetLastError(); result != NO_ERROR)
+		// GlobalUnlock returns zero both when the final lock is released (success)
+		// and on failure. Clear last-error first to distinguish those cases.
+		SetLastError(NO_ERROR);
+		const BOOL remainsLocked = GlobalUnlock(MemHandle);
+		const DWORD result = GetLastError();
+		if (remainsLocked == FALSE && result != NO_ERROR)
 			return HRESULT_FROM_WIN32(result);
 		MemPtr = nullptr;
 		return S_OK;

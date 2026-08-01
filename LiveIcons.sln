@@ -12,6 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		Changes.txt = Changes.txt
 		DEPENDENCIES.md = DEPENDENCIES.md
+		ERROR_HANDLING.md = ERROR_HANDLING.md
 		LICENSE = LICENSE
 		README.md = README.md
 	EndProjectSection
@@ -27,6 +28,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnRAR", "unrar\UnRARDll.vcxproj", "{E815C46C-36C4-499F-BBC2-E772C6B17971}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LiveIconsTests", "Tests\LiveIconsTests.vcxproj", "{9D388F52-4026-4BE2-B8D4-D17294E55392}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LiveIconsBoundaryTests", "Tests\LiveIconsBoundaryTests.vcxproj", "{6A4EA363-89D7-428A-95C1-BD4229E32C53}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -92,6 +95,14 @@ Global
 		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Release|x64.Build.0 = Release|x64
 		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Release|x86.ActiveCfg = Release|Win32
 		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Release|x86.Build.0 = Release|Win32
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Debug|x64.ActiveCfg = Debug|x64
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Debug|x64.Build.0 = Debug|x64
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Debug|x86.ActiveCfg = Debug|Win32
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Debug|x86.Build.0 = Debug|Win32
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Release|x64.ActiveCfg = Release|x64
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Release|x64.Build.0 = Release|x64
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Release|x86.ActiveCfg = Release|Win32
+		{6A4EA363-89D7-428A-95C1-BD4229E32C53}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

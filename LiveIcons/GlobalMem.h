@@ -12,15 +12,15 @@ namespace Utility
 		GlobalMem() = default;
 		GlobalMem(const GlobalMem&) = delete;
 		GlobalMem& operator=(const GlobalMem&) = delete;
-		~GlobalMem();
+		~GlobalMem() noexcept;
 
-		HRESULT AllocateAndLock(size_t size);
-		HRESULT Allocate(size_t size);
-		HRESULT Lock();
-		HRESULT Unlock();
+		HRESULT AllocateAndLock(size_t size) noexcept;
+		HRESULT Allocate(size_t size) noexcept;
+		HRESULT Lock() noexcept;
+		HRESULT Unlock() noexcept;
 
-		[[nodiscard]] HGLOBAL Handle() const { return MemHandle; }
-		[[nodiscard]] void* Ptr() const { return MemPtr; }
-		[[nodiscard]] bool Valid() const { return MemPtr != nullptr; }
+		[[nodiscard]] HGLOBAL Handle() const noexcept { return MemHandle; }
+		[[nodiscard]] void* Ptr() const noexcept { return MemPtr; }
+		[[nodiscard]] bool Valid() const noexcept { return MemPtr != nullptr; }
 	};
 }

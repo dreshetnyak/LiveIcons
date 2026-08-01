@@ -102,6 +102,8 @@ namespace Parser
 			return true;
 
 		DeleteObject(outBitmap);
+		outBitmap = nullptr;
+		outAlphaType = WTSAT_UNKNOWN;
 		return false;
 	}
 }

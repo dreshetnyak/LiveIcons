@@ -1,10 +1,28 @@
 #include "pch.h"
 #include "ZipCache.h"
 
+namespace
+{
+	constexpr ZPOS64_T MaximumArchiveEntries{ 10000U };
+	constexpr uLong MaximumArchivePathBytes{ 4096U };
+	constexpr size_t MaximumCachedPathBytes{ 8U * 1024U * 1024U };
+}
+
 namespace Zip
 {
+	Cache::Cache(const unzFile zipFile) : UnzFile{ zipFile }
+	{
+		unz_global_info64 archiveInfo{};
+		ArchiveWithinLimits = UnzFile != nullptr &&
+			unzGetGlobalInfo64(UnzFile, &archiveInfo) == UNZ_OK &&
+			archiveInfo.number_entry <= MaximumArchiveEntries;
+	}
+
 	const Position* Cache::First()
 	{
+		if (!ArchiveWithinLimits)
+			return END_OF_LIST;
+
 		if (!PositionsCache.empty())
 		{
 			if (CurrentPositionIndex != 0)
@@ -20,6 +38,12 @@ namespace Zip
 		
 	const Position* Cache::Next()
 	{
+		if (!ArchiveWithinLimits)
+			return END_OF_LIST;
+
+		if (CurrentPositionIndex == UNKNOWN)
+			return First();
+
 		const auto nextIndex = CurrentPositionIndex + 1;
 		if (nextIndex < PositionsCache.size())
 		{
@@ -36,6 +60,9 @@ namespace Zip
 
 	const Position* Cache::At(const size_t index)
 	{
+		if (!ArchiveWithinLimits || index >= MaximumArchiveEntries)
+			return END_OF_LIST;
+
 		const Position* pos;
 		const auto positionsCacheSize = PositionsCache.size();
 		if (index < positionsCacheSize)
@@ -64,7 +91,8 @@ namespace Zip
 
 	void Cache::SetCurrent(const Position& position)
 	{
-		CurrentPositionIndex = unzGoToFilePos64(UnzFile, &position.FilePosition) == UNZ_OK
+		CurrentPositionIndex = ArchiveWithinLimits && position.FileIndex < PositionsCache.size() &&
+			unzGoToFilePos64(UnzFile, &position.FilePosition) == UNZ_OK
 			? position.FileIndex
 			: UNKNOWN;
 	}
@@ -73,6 +101,9 @@ namespace Zip
 
 	const Position* Cache::CacheCurrent()
 	{
+		if (!ArchiveWithinLimits || PositionsCache.size() >= MaximumArchiveEntries)
+			return END_OF_LIST;
+
 		unz64_file_pos filePosition{};
 		if (unzGetFilePos64(UnzFile, &filePosition) != UNZ_OK)
 			return END_OF_LIST;
@@ -82,13 +113,18 @@ namespace Zip
 		if (!ReadCurrentFileInfo(currentFilePath, currentFileInfo))
 			return END_OF_LIST;
 		const auto positionsCacheSize = PositionsCache.size();
-		PositionsCache.emplace_back(filePosition, currentFilePath, positionsCacheSize, static_cast<size_t>(currentFileInfo.uncompressed_size));
+		PositionsCache.emplace_back(filePosition, currentFilePath, positionsCacheSize, currentFileInfo.uncompressed_size);
+		CachedPathBytes += currentFilePath.size();
 		return &PositionsCache[positionsCacheSize];
 	}
 
 	bool Cache::ReadCurrentFileInfo(string& outFilePath, unz_file_info64& outFileInfo) const
 	{
 		if (unzGetCurrentFileInfo64(UnzFile, &outFileInfo, nullptr, 0, nullptr, 0, nullptr, 0) != UNZ_OK)
+			return false;
+		if (CachedPathBytes > MaximumCachedPathBytes ||
+			outFileInfo.size_filename > MaximumArchivePathBytes ||
+			outFileInfo.size_filename > MaximumCachedPathBytes - CachedPathBytes)
 			return false;
 
 		auto filePath = string{};

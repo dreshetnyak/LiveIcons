@@ -1,21 +1,22 @@
 #pragma once
+#include "ComPtr.h"
 #include "GlobalMem.h"
 
 namespace Utility
 {
 	using namespace std;
 
-	class DataIStream
+	class DataIStream final
 	{
 		HRESULT Result{S_OK};
 		GlobalMem Memory{};
-		IStream* Stream{};
+		ComPtr<IStream> Stream;
 
 	public:
 		explicit DataIStream(const char* data, size_t size);
-		~DataIStream();
+		~DataIStream() noexcept = default;
 
-		[[nodiscard]] HRESULT GetHResult() const { return Result; }
-		[[nodiscard]] IStream* GetIStream() const { return Stream; }
+		[[nodiscard]] HRESULT GetHResult() const noexcept { return Result; }
+		[[nodiscard]] IStream* GetIStream() const noexcept { return Stream.Get(); }
 	};
 }

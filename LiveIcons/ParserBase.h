@@ -1,8 +1,8 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <utility>
 #include <Windows.h>
-#include <system_error>
 #include <thumbcache.h>
 
 #include "StrLib.h"
@@ -13,38 +13,74 @@ namespace Parser
 
 	struct Result
 	{
-		HRESULT HResult;
+		HRESULT HResult{ S_OK };
 		wstring Error{};
 		wstring Title{};
-		HBITMAP Cover;
-		WTS_ALPHATYPE CoverAlpha;
+		WTS_ALPHATYPE CoverAlpha{ WTSAT_UNKNOWN };
 
-		Result() noexcept : HResult{ S_OK }, Cover{ nullptr }, CoverAlpha{ WTSAT_UNKNOWN } { }
-		explicit Result(const HRESULT hResult) noexcept : HResult{ hResult }, Error{ StrLib::ToWstring(system_category().message(hResult)) }, Cover{nullptr}, CoverAlpha{WTSAT_UNKNOWN} { }
-		explicit Result(const HRESULT hResult, wstring error) noexcept : HResult{ hResult }, Error{ move(error) }, Cover{ nullptr }, CoverAlpha{ WTSAT_UNKNOWN } { }
-		explicit Result(wstring title, const HBITMAP cover, const WTS_ALPHATYPE coverAlpha) noexcept : HResult{ S_OK }, Title{ move(title) }, Cover{ cover }, CoverAlpha{ coverAlpha } { }
-		Result(const Result& other) = default;
-		Result(Result&& other) noexcept : HResult(other.HResult), Title(std::move(other.Title)), Cover(other.Cover), CoverAlpha(other.CoverAlpha) { }
-		Result& operator=(const Result& other) {
-			if (this == &other)
-				return *this;
-			HResult = other.HResult;
-			Title = other.Title;
-			Cover = other.Cover;
-			CoverAlpha = other.CoverAlpha;
-			return *this;
+		Result() noexcept = default;
+		explicit Result(const HRESULT hResult) noexcept : HResult{ hResult } { }
+		explicit Result(const HRESULT hResult, wstring error) noexcept :
+			HResult{ hResult }, Error{ move(error) }
+		{
 		}
+		explicit Result(wstring title, const HBITMAP cover, const WTS_ALPHATYPE coverAlpha) noexcept :
+			Title{ move(title) }, Cover{ cover }, CoverAlpha{ coverAlpha }
+		{
+		}
+
+		Result(const Result&) = delete;
+		Result& operator=(const Result&) = delete;
+
+		Result(Result&& other) noexcept :
+			HResult{ other.HResult },
+			Error{ std::move(other.Error) },
+			Title{ std::move(other.Title) },
+			Cover{ std::exchange(other.Cover, nullptr) },
+			CoverAlpha{ other.CoverAlpha }
+		{
+		}
+
 		Result& operator=(Result&& other) noexcept
 		{
 			if (this == &other)
 				return *this;
+
+			ResetCover();
 			HResult = other.HResult;
+			Error = std::move(other.Error);
 			Title = std::move(other.Title);
-			Cover = other.Cover;
+			Cover = std::exchange(other.Cover, nullptr);
 			CoverAlpha = other.CoverAlpha;
 			return *this;
 		}
-		~Result() = default;
+
+		~Result() noexcept
+		{
+			ResetCover();
+		}
+
+		[[nodiscard]] HBITMAP GetCover() const noexcept
+		{
+			return Cover;
+		}
+
+		[[nodiscard]] HBITMAP ReleaseCover() noexcept
+		{
+			return std::exchange(Cover, nullptr);
+		}
+
+	private:
+		HBITMAP Cover{};
+
+		void ResetCover() noexcept
+		{
+			if (Cover != nullptr)
+			{
+				DeleteObject(Cover);
+				Cover = nullptr;
+			}
+		}
 	};
 
 	class Base

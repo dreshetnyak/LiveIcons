@@ -1,4 +1,4 @@
-# LiveIcons parser smoke tests
+# LiveIcons tests
 
 `LiveIconsTests` is a small, framework-free console program. It compiles the
 production parser and support sources directly and links the same static
@@ -24,9 +24,25 @@ RAR5 fixtures into temporary CBR files. In both archives, the first member is a
 text note and the first image is a 40-by-60 BMP; the solid case verifies that
 the parser correctly processes the preceding member in the same compression
 stream. All cases are exercised through their path and in-memory `IStream`
-entry points. The suite also checks extension routing and the public ZIP cache
-traversal/rewind behavior. A malformed CBR is also checked through both entry
-points, including restoration of a nonzero input-stream position after failure.
+entry points. The suite also checks extension routing, bitmap ownership, the
+public ZIP cache traversal/rewind behavior, archive-path normalization, input
+budgets, malformed EPUB/FB2/MOBI/CHM/CBR data, and adversarial `IStream`
+implementations that return short reads, over-report bytes, or throw. Stream
+position restoration is verified after both success and failure. The retained
+CHMLib fork is also exercised with a valid compressed CHM and in-memory cyclic
+directory/empty-path mutations. Focused libmobi checks reject zero-length HUFF
+codes in a timeout-isolated child process and reject hostile CDIC allocations
+before reserving memory. Deterministic RAR5 header mutations verify the 128 MiB
+dictionary limit and reject multi-volume traversal.
+
+`LiveIconsBoundaryTests` is built beside `LiveIcons.dll`. It loads the actual
+DLL exports and checks COM output contracts, object/server-lock lifetime,
+concurrent reference counting, C++ exception translation, log privacy, and
+rate limiting:
+
+```powershell
+.\bin\x64\Debug\LiveIconsBoundaryTests.exe
+```
 
 Run a recursive corpus smoke test instead:
 

@@ -30,12 +30,6 @@ namespace Parser
 		Result Parse(const wstring& filePath) override;
 
 	private:
-		static vector<string> PossibleRootFileLocations;
-		static vector<string> ImageFileExtensions;
-		static vector<string> HtmlFileExtensions;
-		static vector<tuple<string, string, string>> XmlTagsThatMayContainCoverPath;
-		static vector<tuple<string, string, string>> HtmlTagsThatMayContainCoverPath;
-
 		Result Parse(ParsingContext& epub) const;
 
 		bool GetCoverPath(const ParsingContext& epub, string& outCoverFilePath) const;

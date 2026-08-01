@@ -1,13 +1,19 @@
 #include "pch.h"
 #include "ParserCbr.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
+#include <iterator>
+#include <limits>
 #include <mutex>
+#include <new>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "Gfx.h"
+#include "Utility.h"
 
 // This integration deliberately uses only UnRAR's published DLL interface.
 // UnRAR source code may be used in any software to handle RAR archives without
@@ -26,6 +32,9 @@ namespace
 	constexpr std::uint64_t MaximumArchiveSnapshotSize{ 1024ULL * 1024ULL * 1024ULL };
 	constexpr std::uint64_t MaximumProcessedBytes{ 512ULL * 1024ULL * 1024ULL };
 	constexpr std::uint64_t MaximumArchiveEntries{ 10000ULL };
+	// RARHeaderDataEx::DictSize is expressed in KiB. Keep the decoder's working
+	// set suitable for Explorer's isolated thumbnail host.
+	constexpr unsigned int MaximumDictionaryKilobytes{ 128U * 1024U };
 	constexpr std::size_t StreamCopyBufferSize{ 1024U * 1024U };
 	constexpr std::size_t LongArchiveNameCapacity{ 32768U };
 
@@ -48,7 +57,7 @@ namespace
 		UniqueHandle& operator=(const UniqueHandle&) = delete;
 		UniqueHandle& operator=(UniqueHandle&&) = delete;
 
-		~UniqueHandle()
+		~UniqueHandle() noexcept
 		{
 			if (Handle != INVALID_HANDLE_VALUE)
 				CloseHandle(Handle);
@@ -74,6 +83,52 @@ namespace
 		}
 	};
 
+	class UniqueBitmap final
+	{
+		HBITMAP Bitmap{};
+
+	public:
+		explicit UniqueBitmap(const HBITMAP bitmap = nullptr) noexcept : Bitmap{ bitmap } { }
+		UniqueBitmap(const UniqueBitmap&) = delete;
+		UniqueBitmap(UniqueBitmap&&) = delete;
+		UniqueBitmap& operator=(const UniqueBitmap&) = delete;
+		UniqueBitmap& operator=(UniqueBitmap&&) = delete;
+
+		~UniqueBitmap() noexcept
+		{
+			if (Bitmap != nullptr)
+				DeleteObject(Bitmap);
+		}
+
+		[[nodiscard]] HBITMAP Get() const noexcept { return Bitmap; }
+
+		[[nodiscard]] HBITMAP Release() noexcept
+		{
+			return std::exchange(Bitmap, nullptr);
+		}
+	};
+
+	class PendingTemporaryFile final
+	{
+		const wchar_t* Path;
+		bool Armed{ true };
+
+	public:
+		explicit PendingTemporaryFile(const wchar_t* const path) noexcept : Path{ path } { }
+		PendingTemporaryFile(const PendingTemporaryFile&) = delete;
+		PendingTemporaryFile(PendingTemporaryFile&&) = delete;
+		PendingTemporaryFile& operator=(const PendingTemporaryFile&) = delete;
+		PendingTemporaryFile& operator=(PendingTemporaryFile&&) = delete;
+
+		~PendingTemporaryFile() noexcept
+		{
+			if (Armed && Path != nullptr)
+				DeleteFileW(Path);
+		}
+
+		void Release() noexcept { Armed = false; }
+	};
+
 	class TemporaryFile final
 	{
 		std::wstring Path;
@@ -85,7 +140,7 @@ namespace
 		TemporaryFile& operator=(const TemporaryFile&) = delete;
 		TemporaryFile& operator=(TemporaryFile&&) = delete;
 
-		~TemporaryFile()
+		~TemporaryFile() noexcept
 		{
 			// UnRAR reopens the snapshot by name without FILE_SHARE_DELETE, so a
 			// delete-on-close handle cannot remain open. This owner removes it as
@@ -98,6 +153,9 @@ namespace
 
 		HRESULT Create(UniqueHandle& outHandle)
 		{
+			if (!Path.empty())
+				return HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
+
 			std::array<wchar_t, MAX_PATH + 1> temporaryDirectory{};
 			const DWORD directoryLength = GetTempPathW(
 				static_cast<DWORD>(temporaryDirectory.size()), temporaryDirectory.data());
@@ -110,7 +168,11 @@ namespace
 			if (GetTempFileNameW(temporaryDirectory.data(), L"LIC", 0, temporaryName.data()) == 0)
 				return HRESULT_FROM_WIN32(GetLastError());
 
+			// GetTempFileNameW creates the file. Keep a non-allocating owner armed
+			// until the durable path owner has successfully copied its name.
+			PendingTemporaryFile pendingFile{ temporaryName.data() };
 			Path.assign(temporaryName.data());
+			pendingFile.Release();
 			const HANDLE handle = CreateFileW(
 				Path.c_str(), GENERIC_WRITE, 0, nullptr, TRUNCATE_EXISTING,
 				FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
@@ -130,14 +192,30 @@ namespace
 		bool Restored{ false };
 
 	public:
-		explicit StreamPositionRestorer(IStream* const stream) :
+		explicit StreamPositionRestorer(IStream* const stream) noexcept :
 			Stream{ stream }, CaptureResult{ E_POINTER }
 		{
 			if (Stream == nullptr)
 				return;
 
-			constexpr LARGE_INTEGER zero{};
-			CaptureResult = Stream->Seek(zero, STREAM_SEEK_CUR, &OriginalPosition);
+			try
+			{
+				constexpr LARGE_INTEGER zero{};
+				CaptureResult = Stream->Seek(zero, STREAM_SEEK_CUR, &OriginalPosition);
+				if (SUCCEEDED(CaptureResult) &&
+					OriginalPosition.QuadPart > static_cast<ULONGLONG>((std::numeric_limits<LONGLONG>::max)()))
+				{
+					CaptureResult = HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW);
+				}
+			}
+			catch (const std::bad_alloc&)
+			{
+				CaptureResult = E_OUTOFMEMORY;
+			}
+			catch (...)
+			{
+				CaptureResult = E_FAIL;
+			}
 		}
 
 		StreamPositionRestorer(const StreamPositionRestorer&) = delete;
@@ -145,32 +223,54 @@ namespace
 		StreamPositionRestorer& operator=(const StreamPositionRestorer&) = delete;
 		StreamPositionRestorer& operator=(StreamPositionRestorer&&) = delete;
 
-		~StreamPositionRestorer()
+		~StreamPositionRestorer() noexcept
 		{
 			static_cast<void>(Restore());
 		}
 
 		[[nodiscard]] HRESULT GetCaptureResult() const noexcept { return CaptureResult; }
 
-		HRESULT Rewind() const
+		HRESULT Rewind() const noexcept
 		{
 			if (FAILED(CaptureResult))
 				return CaptureResult;
-			constexpr LARGE_INTEGER zero{};
-			return Stream->Seek(zero, STREAM_SEEK_SET, nullptr);
+			try
+			{
+				constexpr LARGE_INTEGER zero{};
+				return Stream->Seek(zero, STREAM_SEEK_SET, nullptr);
+			}
+			catch (const std::bad_alloc&)
+			{
+				return E_OUTOFMEMORY;
+			}
+			catch (...)
+			{
+				return E_FAIL;
+			}
 		}
 
-		HRESULT Restore()
+		HRESULT Restore() noexcept
 		{
 			if (Restored || FAILED(CaptureResult))
 				return CaptureResult;
 
-			LARGE_INTEGER position{};
-			position.QuadPart = static_cast<LONGLONG>(OriginalPosition.QuadPart);
-			const HRESULT result = Stream->Seek(position, STREAM_SEEK_SET, nullptr);
-			if (SUCCEEDED(result))
-				Restored = true;
-			return result;
+			try
+			{
+				LARGE_INTEGER position{};
+				position.QuadPart = static_cast<LONGLONG>(OriginalPosition.QuadPart);
+				const HRESULT result = Stream->Seek(position, STREAM_SEEK_SET, nullptr);
+				if (SUCCEEDED(result))
+					Restored = true;
+				return result;
+			}
+			catch (const std::bad_alloc&)
+			{
+				return E_OUTOFMEMORY;
+			}
+			catch (...)
+			{
+				return E_FAIL;
+			}
 		}
 	};
 
@@ -185,10 +285,19 @@ namespace
 		RarArchive& operator=(const RarArchive&) = delete;
 		RarArchive& operator=(RarArchive&&) = delete;
 
-		~RarArchive()
+		~RarArchive() noexcept
 		{
 			if (Handle != nullptr)
-				RARCloseArchive(Handle);
+			{
+				try
+				{
+					RARCloseArchive(Handle);
+				}
+				catch (...)
+				{
+					// A destructor cannot report an UnRAR implementation failure.
+				}
+			}
 		}
 
 		[[nodiscard]] HANDLE Get() const noexcept { return Handle; }
@@ -204,6 +313,7 @@ namespace
 		bool MissingVolume{};
 		bool LargeDictionary{};
 		bool ProcessingLimitExceeded{};
+		bool UnexpectedFailure{};
 		std::uint64_t ProcessedBytes{};
 
 		void Reset(std::vector<char>* const output = nullptr) noexcept
@@ -216,17 +326,14 @@ namespace
 			MissingVolume = false;
 			LargeDictionary = false;
 			ProcessingLimitExceeded = false;
+			UnexpectedFailure = false;
 		}
 	};
 
-	int CALLBACK UnrarCallback(
-		const UINT message, const LPARAM userData, const LPARAM parameter1,
-		const LPARAM parameter2) noexcept
+	int ProcessUnrarCallback(
+		CallbackContext& context, const UINT message, const LPARAM parameter1,
+		const LPARAM parameter2)
 	{
-		auto* const context = reinterpret_cast<CallbackContext*>(userData);
-		if (context == nullptr)
-			return -1;
-
 		switch (message)
 		{
 		case UCM_PROCESSDATA:
@@ -236,36 +343,36 @@ namespace
 
 			const auto byteCount = static_cast<std::size_t>(parameter2);
 			if (byteCount > MaximumProcessedBytes ||
-				context->ProcessedBytes > MaximumProcessedBytes - byteCount)
+				context.ProcessedBytes > MaximumProcessedBytes - byteCount)
 			{
-				context->ProcessingLimitExceeded = true;
+				context.ProcessingLimitExceeded = true;
 				return -1;
 			}
-			context->ProcessedBytes += byteCount;
+			context.ProcessedBytes += byteCount;
 
-			if (!context->CaptureData || context->Output == nullptr || byteCount == 0)
+			if (!context.CaptureData || context.Output == nullptr || byteCount == 0)
 				return 0;
 
 			if (byteCount > MaximumImageSize ||
-				context->Output->size() > MaximumImageSize - byteCount)
+				context.Output->size() > MaximumImageSize - byteCount)
 			{
-				context->DataTooLarge = true;
+				context.DataTooLarge = true;
 				return -1;
 			}
 
 			const auto* const bytes = reinterpret_cast<const char*>(parameter1);
 			try
 			{
-				context->Output->insert(context->Output->end(), bytes, bytes + byteCount);
+				context.Output->insert(context.Output->end(), bytes, bytes + byteCount);
 			}
 			catch (const std::bad_alloc&)
 			{
-				context->AllocationFailed = true;
+				context.AllocationFailed = true;
 				return -1;
 			}
 			catch (const std::length_error&)
 			{
-				context->AllocationFailed = true;
+				context.AllocationFailed = true;
 				return -1;
 			}
 			return 0;
@@ -273,24 +380,53 @@ namespace
 
 		case UCM_NEEDPASSWORD:
 		case UCM_NEEDPASSWORDW:
-			context->PasswordRequested = true;
+			context.PasswordRequested = true;
 			return -1;
 
 		case UCM_CHANGEVOLUME:
 		case UCM_CHANGEVOLUMEW:
 			if (parameter2 == RAR_VOL_ASK)
 			{
-				context->MissingVolume = true;
+				context.MissingVolume = true;
 				return -1;
 			}
 			return 0;
 
 		case UCM_LARGEDICT:
-			context->LargeDictionary = true;
+			context.LargeDictionary = true;
 			return 0; // UCM_LARGEDICT requires 1, rather than 0, to permit extraction.
 
 		default:
 			return 0;
+		}
+	}
+
+	int CALLBACK UnrarCallback(
+		const UINT message, const LPARAM userData, const LPARAM parameter1,
+		const LPARAM parameter2) noexcept
+	{
+		auto* const context = reinterpret_cast<CallbackContext*>(userData);
+		if (context == nullptr)
+			return -1;
+
+		try
+		{
+			return ProcessUnrarCallback(*context, message, parameter1, parameter2);
+		}
+		catch (const std::bad_alloc&)
+		{
+			context->AllocationFailed = true;
+			return -1;
+		}
+		catch (const std::length_error&)
+		{
+			context->AllocationFailed = true;
+			return -1;
+		}
+		catch (...)
+		{
+			context->UnexpectedFailure = true;
+			return -1;
 		}
 	}
 
@@ -347,8 +483,13 @@ namespace
 		const RARHeaderDataEx& header, const std::vector<wchar_t>& longName)
 	{
 		if (!longName.empty() && longName.front() != L'\0')
-			return std::wstring{ longName.data() };
-		return std::wstring{ header.FileNameW };
+		{
+			const auto terminator = std::find(longName.begin(), longName.end(), L'\0');
+			return std::wstring{ longName.begin(), terminator };
+		}
+
+		const auto fileNameEnd = std::find(std::begin(header.FileNameW), std::end(header.FileNameW), L'\0');
+		return std::wstring{ std::begin(header.FileNameW), fileNameEnd };
 	}
 
 	[[nodiscard]] HRESULT RarErrorToHResult(const int error) noexcept
@@ -439,11 +580,42 @@ namespace
 				HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED),
 				L"The CBR requires a RAR dictionary larger than UnRAR permits for this operation."
 			};
+		if (callback.UnexpectedFailure)
+			return Parser::Result{ E_FAIL, L"An unexpected failure occurred in the UnRAR data callback." };
 		return Parser::Result{ E_FAIL, L"UnRAR stopped while processing a CBR entry." };
 	}
 
-	HRESULT WriteAll(const HANDLE file, const char* bytes, const ULONG byteCount)
+	[[nodiscard]] bool HasCallbackError(const CallbackContext& callback) noexcept
 	{
+		return callback.PasswordRequested || callback.DataTooLarge || callback.AllocationFailed ||
+			callback.MissingVolume || callback.LargeDictionary || callback.ProcessingLimitExceeded ||
+			callback.UnexpectedFailure;
+	}
+
+	template<typename Operation>
+	[[nodiscard]] Parser::Result ExecuteParserBoundary(Operation&& operation) noexcept
+	{
+		try
+		{
+			return std::forward<Operation>(operation)();
+		}
+		catch (const std::bad_alloc&)
+		{
+			return Parser::Result{ E_OUTOFMEMORY };
+		}
+		catch (...)
+		{
+			return Parser::Result{ E_FAIL };
+		}
+	}
+
+	HRESULT WriteAll(const HANDLE file, const char* bytes, const ULONG byteCount) noexcept
+	{
+		if (file == nullptr || file == INVALID_HANDLE_VALUE)
+			return E_HANDLE;
+		if (bytes == nullptr && byteCount != 0)
+			return E_POINTER;
+
 		ULONG writtenTotal{};
 		while (writtenTotal < byteCount)
 		{
@@ -473,9 +645,9 @@ namespace
 
 		if (SUCCEEDED(result))
 		{
-			STATSTG statistics{};
-			if (SUCCEEDED(stream->Stat(&statistics, STATFLAG_NONAME)) &&
-				statistics.cbSize.QuadPart > MaximumArchiveSnapshotSize)
+			ULONGLONG streamSize{};
+			if (SUCCEEDED(Utility::GetIStreamFileSize(stream, streamSize)) &&
+				streamSize > MaximumArchiveSnapshotSize)
 			{
 				result = HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
 				outError = L"The CBR stream exceeds LiveIcons' 1 GiB temporary-snapshot safety limit.";
@@ -510,6 +682,12 @@ namespace
 			{
 				result = readResult;
 				outError = L"The CBR stream could not be read while creating its temporary snapshot.";
+				break;
+			}
+			if (bytesRead > buffer.size())
+			{
+				result = E_UNEXPECTED;
+				outError = L"The CBR stream reported reading more data than its supplied buffer can hold.";
 				break;
 			}
 
@@ -556,176 +734,190 @@ namespace Parser
 {
 	bool Cbr::CanParse(const std::wstring& fileExtension)
 	{
-		return StrLib::EqualsCi(fileExtension, std::wstring{ L".cbr" });
+		return EqualsAsciiCaseInsensitive(fileExtension, L".cbr");
 	}
 
 	Result Cbr::Parse(const std::wstring& fileName)
 	{
-		if (fileName.empty())
-			return Result{ E_INVALIDARG, L"The CBR path is empty." };
-
-		const std::scoped_lock unrarLock{ GetUnrarMutex() };
-		CallbackContext callback{};
-		std::wstring mutableFileName{ fileName };
-		RAROpenArchiveDataEx openData{};
-		openData.ArcNameW = mutableFileName.data();
-		openData.OpenMode = RAR_OM_EXTRACT;
-		openData.Callback = UnrarCallback;
-		openData.UserData = reinterpret_cast<LPARAM>(&callback);
-
-		const HANDLE rawArchive = RAROpenArchiveEx(&openData);
-		if (rawArchive == nullptr)
+		return ExecuteParserBoundary([&]() -> Result
 		{
-			if (callback.PasswordRequested ||
-				openData.OpenResult == ERAR_MISSING_PASSWORD || openData.OpenResult == ERAR_BAD_PASSWORD)
+			if (fileName.empty())
+				return Result{ E_INVALIDARG, L"The CBR path is empty." };
+
+			const std::scoped_lock unrarLock{ GetUnrarMutex() };
+			CallbackContext callback{};
+			std::wstring mutableFileName{ fileName };
+			RAROpenArchiveDataEx openData{};
+			openData.ArcNameW = mutableFileName.data();
+			openData.OpenMode = RAR_OM_EXTRACT;
+			openData.Callback = UnrarCallback;
+			openData.UserData = reinterpret_cast<LPARAM>(&callback);
+
+			const HANDLE rawArchive = RAROpenArchiveEx(&openData);
+			if (rawArchive == nullptr)
+			{
+				if (HasCallbackError(callback))
+					return MakeCallbackError(callback);
+				if (openData.OpenResult == ERAR_MISSING_PASSWORD || openData.OpenResult == ERAR_BAD_PASSWORD)
+					return MakeEncryptedError();
+				return MakeRarError(L"Unable to open the CBR archive", openData.OpenResult);
+			}
+
+			RarArchive archive{ rawArchive };
+			if ((openData.Flags & ROADF_VOLUME) != 0)
+				return Result{
+					HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED),
+					L"Multi-volume CBR archives are not supported because thumbnail extraction must remain confined to one input file."
+				};
+			if ((openData.Flags & ROADF_ENCHEADERS) != 0)
 				return MakeEncryptedError();
-			if (callback.MissingVolume || callback.LargeDictionary)
-				return MakeCallbackError(callback);
-			return MakeRarError(L"Unable to open the CBR archive", openData.OpenResult);
-		}
 
-		RarArchive archive{ rawArchive };
-		if ((openData.Flags & ROADF_ENCHEADERS) != 0)
-			return MakeEncryptedError();
+			const bool solidArchive = (openData.Flags & ROADF_SOLID) != 0;
+			bool foundImageEntry{};
+			bool foundOversizedImage{};
+			bool foundOversizedDecodedImage{};
+			bool foundEncryptedImage{};
+			std::uint64_t archiveEntryCount{};
+			std::uint64_t declaredProcessedBytes{};
+			std::vector<wchar_t> longFileName(LongArchiveNameCapacity);
 
-		const bool solidArchive = (openData.Flags & ROADF_SOLID) != 0;
-		bool foundImageEntry{};
-		bool foundOversizedImage{};
-		bool foundOversizedDecodedImage{};
-		bool foundEncryptedImage{};
-		std::uint64_t archiveEntryCount{};
-		std::uint64_t declaredProcessedBytes{};
-		std::vector<wchar_t> longFileName(LongArchiveNameCapacity);
+			for (;;)
+			{
+				RARHeaderDataEx header{};
+				longFileName.front() = L'\0';
+				header.FileNameEx = longFileName.data();
+				header.FileNameExSize = static_cast<unsigned int>(longFileName.size());
 
-		for (;;)
-		{
-			RARHeaderDataEx header{};
-			longFileName.front() = L'\0';
-			header.FileNameEx = longFileName.data();
-			header.FileNameExSize = static_cast<unsigned int>(longFileName.size());
+				const int headerResult = RARReadHeaderEx(archive.Get(), &header);
+				if (headerResult == ERAR_END_ARCHIVE)
+					break;
+				if (headerResult == ERAR_MISSING_PASSWORD || headerResult == ERAR_BAD_PASSWORD)
+					return MakeEncryptedError();
+				if (headerResult != ERAR_SUCCESS)
+					return MakeRarError(L"Unable to enumerate the CBR archive", headerResult);
+				if (++archiveEntryCount > MaximumArchiveEntries)
+					return Result{
+						HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE),
+						L"The CBR contains more than LiveIcons' 10,000-entry safety limit."
+					};
 
-			const int headerResult = RARReadHeaderEx(archive.Get(), &header);
-			if (headerResult == ERAR_END_ARCHIVE)
-				break;
-			if (headerResult == ERAR_MISSING_PASSWORD || headerResult == ERAR_BAD_PASSWORD)
+				const std::wstring entryName = GetHeaderFileName(header, longFileName);
+				const bool isDirectory = (header.Flags & RHDF_DIRECTORY) != 0;
+				const bool isImage = !isDirectory && IsImageFileName(entryName);
+				const bool isEncrypted = (header.Flags & RHDF_ENCRYPTED) != 0;
+				const std::uint64_t uncompressedSize = GetUncompressedSize(header);
+
+				foundImageEntry = foundImageEntry || isImage;
+				foundEncryptedImage = foundEncryptedImage || isImage && isEncrypted;
+				foundOversizedImage = foundOversizedImage || isImage && uncompressedSize > MaximumImageSize;
+
+				std::vector<char> imageData;
+				const bool collectImage = isImage && !isEncrypted && uncompressedSize <= MaximumImageSize;
+				if (collectImage)
+				{
+					try
+					{
+						imageData.reserve(static_cast<std::size_t>(uncompressedSize));
+					}
+					catch (const std::bad_alloc&)
+					{
+						return Result{ E_OUTOFMEMORY, L"Not enough memory was available to reserve a CBR image buffer." };
+					}
+					callback.Reset(&imageData);
+				}
+				else
+				{
+					callback.Reset();
+				}
+
+				// A solid archive must actually decode preceding entries. Use RAR_TEST so
+				// UCM_PROCESSDATA can enforce a cumulative work budget while discarding
+				// non-image bytes. Non-solid entries can be skipped without decompression.
+				const bool testEntry = collectImage || solidArchive || (header.Flags & RHDF_SOLID) != 0;
+				if (testEntry && header.DictSize > MaximumDictionaryKilobytes)
+					return Result{
+						HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED),
+						L"The CBR requires a RAR dictionary larger than LiveIcons' 128 MiB safety limit."
+					};
+				if (testEntry &&
+					(uncompressedSize > MaximumProcessedBytes ||
+						declaredProcessedBytes > MaximumProcessedBytes - uncompressedSize))
+				{
+					return Result{
+						HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE),
+						L"CBR processing would exceed LiveIcons' 512 MiB decompression-work safety limit."
+					};
+				}
+				if (testEntry)
+					declaredProcessedBytes += uncompressedSize;
+
+				const int processResult = RARProcessFileW(
+					archive.Get(), testEntry ? RAR_TEST : RAR_SKIP, nullptr, nullptr);
+				if (HasCallbackError(callback))
+					return MakeCallbackError(callback);
+				if (processResult == ERAR_MISSING_PASSWORD || processResult == ERAR_BAD_PASSWORD ||
+					isEncrypted && processResult != ERAR_SUCCESS)
+					return MakeEncryptedError();
+				if (processResult != ERAR_SUCCESS)
+					return MakeRarError(
+						std::format(L"Unable to process CBR entry '{}'", entryName), processResult);
+
+				if (!collectImage || imageData.empty())
+					continue;
+
+				HBITMAP rawBitmap{};
+				WTS_ALPHATYPE alphaType{ WTSAT_UNKNOWN };
+				SIZE imageSize{};
+				const HRESULT imageResult = Gfx::LoadImageToHBitmap(
+					imageData.data(), imageData.size(), rawBitmap, alphaType, imageSize);
+				UniqueBitmap bitmap{ rawBitmap };
+				if (FAILED(imageResult) || bitmap.Get() == nullptr)
+				{
+					foundOversizedDecodedImage = foundOversizedDecodedImage ||
+						imageResult == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+					continue;
+				}
+
+				if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
+				{
+					Result result{ std::wstring{}, bitmap.Get(), alphaType };
+					static_cast<void>(bitmap.Release());
+					return result;
+				}
+			}
+
+			if (foundEncryptedImage)
 				return MakeEncryptedError();
-			if (headerResult != ERAR_SUCCESS)
-				return MakeRarError(L"Unable to enumerate the CBR archive", headerResult);
-			if (++archiveEntryCount > MaximumArchiveEntries)
+			if (foundOversizedImage || foundOversizedDecodedImage)
 				return Result{
 					HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE),
-					L"The CBR contains more than LiveIcons' 10,000-entry safety limit."
+					L"The CBR contains image entries, but at least one encoded or decoded image exceeds LiveIcons' 64 MiB in-memory safety limit and no valid cover was found."
 				};
-
-			const std::wstring entryName = GetHeaderFileName(header, longFileName);
-			const bool isDirectory = (header.Flags & RHDF_DIRECTORY) != 0;
-			const bool isImage = !isDirectory && IsImageFileName(entryName);
-			const bool isEncrypted = (header.Flags & RHDF_ENCRYPTED) != 0;
-			const std::uint64_t uncompressedSize = GetUncompressedSize(header);
-
-			foundImageEntry = foundImageEntry || isImage;
-			foundEncryptedImage = foundEncryptedImage || isImage && isEncrypted;
-			foundOversizedImage = foundOversizedImage || isImage && uncompressedSize > MaximumImageSize;
-
-			std::vector<char> imageData;
-			const bool collectImage = isImage && !isEncrypted && uncompressedSize <= MaximumImageSize;
-			if (collectImage)
-			{
-				try
-				{
-					imageData.reserve(static_cast<std::size_t>(uncompressedSize));
-				}
-				catch (const std::bad_alloc&)
-				{
-					return Result{ E_OUTOFMEMORY, L"Not enough memory was available to reserve a CBR image buffer." };
-				}
-				callback.Reset(&imageData);
-			}
-			else
-			{
-				callback.Reset();
-			}
-
-			// A solid archive must actually decode preceding entries. Use RAR_TEST so
-			// UCM_PROCESSDATA can enforce a cumulative work budget while discarding
-			// non-image bytes. Non-solid entries can be skipped without decompression.
-			const bool testEntry = collectImage || solidArchive || (header.Flags & RHDF_SOLID) != 0;
-			if (testEntry &&
-				(uncompressedSize > MaximumProcessedBytes ||
-					declaredProcessedBytes > MaximumProcessedBytes - uncompressedSize))
-			{
+			if (!foundImageEntry)
 				return Result{
-					HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE),
-					L"CBR processing would exceed LiveIcons' 512 MiB decompression-work safety limit."
+					HRESULT_FROM_WIN32(ERROR_NOT_FOUND),
+					L"The CBR archive does not contain a supported image entry."
 				};
-			}
-			if (testEntry)
-				declaredProcessedBytes += uncompressedSize;
-
-			const int processResult = RARProcessFileW(
-				archive.Get(), testEntry ? RAR_TEST : RAR_SKIP, nullptr, nullptr);
-			if (callback.PasswordRequested || callback.DataTooLarge ||
-				callback.AllocationFailed || callback.MissingVolume || callback.LargeDictionary ||
-				callback.ProcessingLimitExceeded)
-				return MakeCallbackError(callback);
-			if (processResult == ERAR_MISSING_PASSWORD || processResult == ERAR_BAD_PASSWORD ||
-				isEncrypted && processResult != ERAR_SUCCESS)
-				return MakeEncryptedError();
-			if (processResult != ERAR_SUCCESS)
-				return MakeRarError(
-					std::format(L"Unable to process CBR entry '{}'", entryName), processResult);
-
-			if (!collectImage || imageData.empty())
-				continue;
-
-			HBITMAP bitmap{};
-			WTS_ALPHATYPE alphaType{ WTSAT_UNKNOWN };
-			SIZE imageSize{};
-			const HRESULT imageResult = Gfx::LoadImageToHBitmap(
-				imageData.data(), imageData.size(), bitmap, alphaType, imageSize);
-			if (FAILED(imageResult) || bitmap == nullptr)
-			{
-				foundOversizedDecodedImage = foundOversizedDecodedImage ||
-					imageResult == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
-				if (bitmap != nullptr)
-					DeleteObject(bitmap);
-				continue;
-			}
-
-			if (Gfx::ImageSizeSatisfiesCoverConstraints(imageSize))
-				return Result{ std::wstring{}, bitmap, alphaType };
-
-			DeleteObject(bitmap);
-		}
-
-		if (foundEncryptedImage)
-			return MakeEncryptedError();
-		if (foundOversizedImage || foundOversizedDecodedImage)
-			return Result{
-				HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE),
-				L"The CBR contains image entries, but at least one encoded or decoded image exceeds LiveIcons' 64 MiB in-memory safety limit and no valid cover was found."
-			};
-		if (!foundImageEntry)
 			return Result{
 				HRESULT_FROM_WIN32(ERROR_NOT_FOUND),
-				L"The CBR archive does not contain a supported image entry."
+				L"The CBR archive contains images, but none could be decoded as a valid cover."
 			};
-		return Result{
-			HRESULT_FROM_WIN32(ERROR_NOT_FOUND),
-			L"The CBR archive contains images, but none could be decoded as a valid cover."
-		};
+		});
 	}
 
 	Result Cbr::Parse(IStream* const stream)
 	{
-		if (stream == nullptr)
-			return Result{ E_POINTER, L"The CBR stream is null." };
+		return ExecuteParserBoundary([&]() -> Result
+		{
+			if (stream == nullptr)
+				return Result{ E_POINTER, L"The CBR stream is null." };
 
-		TemporaryFile temporaryFile;
-		std::wstring snapshotError;
-		if (const HRESULT result = SnapshotStream(stream, temporaryFile, snapshotError); FAILED(result))
-			return Result{ result, std::move(snapshotError) };
+			TemporaryFile temporaryFile;
+			std::wstring snapshotError;
+			if (const HRESULT result = SnapshotStream(stream, temporaryFile, snapshotError); FAILED(result))
+				return Result{ result, std::move(snapshotError) };
 
-		return Parse(temporaryFile.GetPath());
+			return Parse(temporaryFile.GetPath());
+		});
 	}
 }

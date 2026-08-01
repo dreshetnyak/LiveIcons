@@ -1,5 +1,5 @@
 #pragma once
-#include "Registry.h"
+#include <Windows.h>
 
 #define CLSID_LIVE_ICONS_HANDLER_STR L"{434647DD-455C-4F43-AA12-6EFD055F5B08}"
 #define LIVE_ICONS_HANDLER_NAME L"Live Icons Handler"
@@ -27,8 +27,5 @@ class Configuration
 public:
 	constexpr static CLSID CLSID_LIVE_ICONS_HANDLER{ 0x434647dd, 0x455c, 0x4f43, { 0xaa, 0x12, 0x6e, 0xfd, 0x5, 0x5f, 0x5b, 0x8 } }; // {434647DD-455C-4F43-AA12-6EFD055F5B08}
 
-	// ReSharper disable once CppVariableCanBeMadeConstexpr (No it can't!)
-	const static std::vector<ClassInstantiator> CLASS_INSTANTIATORS;
-
-	static CreateInstanceFunction GetInstantiatorFunction(const IID& clsid);
+	static CreateInstanceFunction GetInstantiatorFunction(const IID& clsid) noexcept;
 };

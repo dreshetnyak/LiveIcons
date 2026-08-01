@@ -10,6 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LiveIconsTests.cpp" />
+    <ClCompile Include="..\LiveIcons\CbrCoverSelection.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\DataIStream.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\GlobalMem.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\Gfx.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
@@ -31,6 +32,9 @@
   <ItemGroup>
     <None Include="Fixtures\cbr-rar5-first-image.rar.base64"><Filter>Fixtures</Filter></None>
     <None Include="Fixtures\cbr-rar5-solid-first-image.rar.base64"><Filter>Fixtures</Filter></None>
+    <None Include="Fixtures\cbr-rar5-ranked-fallback.rar.base64"><Filter>Fixtures</Filter></None>
+    <None Include="Fixtures\cbr-rar5-solid-comicinfo.rar.base64"><Filter>Fixtures</Filter></None>
+    <None Include="Fixtures\cbr-rar5-oversized-preferred.rar.base64"><Filter>Fixtures</Filter></None>
     <None Include="..\zlib\contrib\dotzlib\DotZLib.chm"><Filter>Fixtures</Filter></None>
     <None Include="Fixtures\README.md"><Filter>Fixtures</Filter></None>
   </ItemGroup>

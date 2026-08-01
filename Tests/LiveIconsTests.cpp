@@ -46,6 +46,7 @@
 #include "../LiveIcons/Utility.h"
 #include "../LiveIcons/ZipArchive.h"
 #include "../LiveIcons/ZipCache.h"
+#include "../LiveIcons/CbrCoverSelection.h"
 #include "../chmlib/src/lzx.h"
 
 extern "C"
@@ -81,6 +82,9 @@ namespace
     constexpr LONG CbrFixtureHeight = 60;
     constexpr size_t CbrFixtureArchiveSize = 7444;
     constexpr size_t SolidCbrFixtureArchiveSize = 1332;
+    constexpr size_t RankedCbrFixtureArchiveSize = 585;
+    constexpr size_t ComicInfoCbrFixtureArchiveSize = 639;
+    constexpr size_t OversizedPreferredCbrFixtureArchiveSize = 3042;
 
     [[noreturn]] void Fail(const std::string& message)
     {
@@ -868,6 +872,12 @@ namespace
         std::vector<char> CbrBytes;
         fs::path SolidCbrPath;
         std::vector<char> SolidCbrBytes;
+        fs::path RankedCbrPath;
+        std::vector<char> RankedCbrBytes;
+        fs::path ComicInfoCbrPath;
+        std::vector<char> ComicInfoCbrBytes;
+        fs::path OversizedPreferredCbrPath;
+        std::vector<char> OversizedPreferredCbrBytes;
         fs::path OversizedDictionaryCbrPath;
         std::vector<char> OversizedDictionaryCbrBytes;
         fs::path MultiVolumeCbrPath;
@@ -924,6 +934,24 @@ namespace
             L"cbr-rar5-solid-first-image.rar.base64", SolidCbrFixtureArchiveSize);
         fixtures.SolidCbrPath = directory / L"generated-solid-cover.cbr";
         WriteFile(fixtures.SolidCbrPath, fixtures.SolidCbrBytes);
+
+        fixtures.RankedCbrBytes = LoadRar5Fixture(
+            L"cbr-rar5-ranked-fallback.rar.base64", RankedCbrFixtureArchiveSize);
+        fixtures.RankedCbrPath = directory / L"generated-ranked-cover.cbr";
+        WriteFile(fixtures.RankedCbrPath, fixtures.RankedCbrBytes);
+
+        fixtures.ComicInfoCbrBytes = LoadRar5Fixture(
+            L"cbr-rar5-solid-comicinfo.rar.base64", ComicInfoCbrFixtureArchiveSize);
+        fixtures.ComicInfoCbrPath = directory / L"generated-comicinfo-cover.cbr";
+        WriteFile(fixtures.ComicInfoCbrPath, fixtures.ComicInfoCbrBytes);
+
+        fixtures.OversizedPreferredCbrBytes = LoadRar5Fixture(
+            L"cbr-rar5-oversized-preferred.rar.base64",
+            OversizedPreferredCbrFixtureArchiveSize);
+        fixtures.OversizedPreferredCbrPath = directory / L"generated-oversized-preferred.cbr";
+        WriteFile(
+            fixtures.OversizedPreferredCbrPath,
+            fixtures.OversizedPreferredCbrBytes);
 
         fixtures.OversizedDictionaryCbrBytes = fixtures.CbrBytes;
         constexpr std::array<unsigned char, 2> dictionaryField{ 0x80, 0x00 };
@@ -1056,6 +1084,78 @@ namespace
 #else
         Require(FindRoute(routes, L".cbr") == nullptr, "Disabled .cbr route is unexpectedly active");
 #endif
+    }
+
+    void TestCbrCoverSelectionPolicy()
+    {
+        std::vector<std::wstring> names
+        {
+            L"pages/issue-10.png",
+            L"pages/issue-003.png",
+            L"pages/issue-000.png",
+            L"pages/issue-02.png",
+            L"pages/issue-2.png"
+        };
+        std::ranges::sort(names, CbrCoverSelection::NaturalLess);
+        const std::vector<std::wstring> expected
+        {
+            L"pages/issue-000.png",
+            L"pages/issue-02.png",
+            L"pages/issue-2.png",
+            L"pages/issue-003.png",
+            L"pages/issue-10.png"
+        };
+        Require(names == expected,
+                "CBR natural filename ordering did not order numeric page runs");
+
+        Require(CbrCoverSelection::IsExplicitCoverName(L"folder/cover.jpg") &&
+                    CbrCoverSelection::IsExplicitCoverName(L"FRONT-COVER.PNG") &&
+                    CbrCoverSelection::IsExplicitCoverName(L"Folder.webp") &&
+                    !CbrCoverSelection::IsExplicitCoverName(L"back-cover.jpg") &&
+                    !CbrCoverSelection::IsExplicitCoverName(L"discover.png"),
+                "CBR explicit-cover filename classification is incorrect");
+
+        const std::string comicInfo{
+            "<ci:ComicInfo xmlns:ci=\"urn:test\"><ci:Pages>"
+            "<ci:Page ci:Image=\"3\" ci:Type=\"Story, FRONTcover\"/>"
+            "<ci:Page Image=\"1\" Type=\"NotFrontCover\"/>"
+            "<ci:Page Image=\"1\" Type=\"frontcover\"/>"
+            "<ci:Page Image=\" +2 \" Type=\"FrontCover\"/>"
+            "<ci:Page Image=\"3\" Type=\"FrontCover\"/>"
+            "</ci:Pages></ci:ComicInfo>" };
+        const auto frontCovers = CbrCoverSelection::FindFrontCoverImageIndices(
+            comicInfo, 4);
+        Require(frontCovers == std::vector<std::size_t>{ 3, 1, 2 },
+                "CBR ComicInfo FrontCover indices were not parsed in metadata order");
+
+        const std::string nestedPages{
+            "<ComicInfo><Extension><Pages>"
+            "<Page Image=\"3\" Type=\"FrontCover\"/>"
+            "</Pages></Extension><Pages>"
+            "<Page Image=\"1\" Type=\"FrontCover\"/>"
+            "</Pages></ComicInfo>" };
+        Require(CbrCoverSelection::FindFrontCoverImageIndices(
+                    nestedPages, 4) == std::vector<std::size_t>{ 1 },
+                "CBR ComicInfo accepted a noncanonical nested Pages element");
+
+        const std::string invalidComicInfo{
+            "<ComicInfo><Pages>"
+            "<Page Image=\"-1\" Type=\"FrontCover\"/>"
+            "<Page Image=\"4\" Type=\"FrontCover\"/>"
+            "<Page Image=\"1x\" Type=\"FrontCover\"/>"
+            "<!-- <Page Image=\"2\" Type=\"FrontCover\"/> -->"
+            "<![CDATA[<Page Image=\"3\" Type=\"FrontCover\"/>]]>"
+            "</Pages></ComicInfo>" };
+        Require(CbrCoverSelection::FindFrontCoverImageIndices(
+                    invalidComicInfo, 4).empty(),
+                "CBR ComicInfo accepted invalid FrontCover image indices");
+
+        const std::string malformedComicInfo{
+            "<ComicInfo><Pages><Page Image=\"1\" Type=\"FrontCover\"/>"
+            "</Pages><broken></ComicInfo>" };
+        Require(CbrCoverSelection::FindFrontCoverImageIndices(
+                    malformedComicInfo, 4).empty(),
+                "CBR ComicInfo accepted metadata from malformed XML");
     }
 
     void TestArchiveCache(const fs::path& epubPath)
@@ -1669,6 +1769,7 @@ namespace
             return;
 
         suite.Run("parser extension routing", TestRouting);
+        suite.Run("CBR cover selection policy", TestCbrCoverSelectionPolicy);
         suite.Run("parser result bitmap ownership", TestResultBitmapOwnership);
         suite.Run("ZIP archive/cache integration", [&] { TestArchiveCache(fixtures.EpubPath); });
         suite.Run("ZIP cache traversal and rewind", [&] { TestRawCacheTraversal(fixtures.EpubPath); });
@@ -1753,6 +1854,51 @@ namespace
             Require(SUCCEEDED(stream.Get()->Seek(zero, STREAM_SEEK_CUR, &position)) &&
                         position.QuadPart == static_cast<ULONGLONG>(originalPosition.QuadPart),
                     "Solid CBR parser did not restore the input IStream position");
+        });
+
+        suite.Run("CBR natural ordering and decode fallback", [&]
+        {
+            Parser::Cbr parser;
+            auto result = parser.Parse(fixtures.RankedCbrPath.wstring());
+            VerifyParseResult(result, std::nullopt, SIZE{ 40, 60 });
+        });
+
+        suite.Run("CBR natural ordering through IStream", [&]
+        {
+            Parser::Cbr parser;
+            auto stream = MakeMemoryStream(fixtures.RankedCbrBytes);
+            auto result = parser.Parse(stream.Get());
+            VerifyParseResult(result, std::nullopt, SIZE{ 40, 60 });
+        });
+
+        suite.Run("solid CBR ComicInfo front-cover selection", [&]
+        {
+            Parser::Cbr parser;
+            auto result = parser.Parse(fixtures.ComicInfoCbrPath.wstring());
+            VerifyParseResult(result, std::nullopt, SIZE{ 43, 63 });
+        });
+
+        suite.Run("solid CBR ComicInfo selection through IStream", [&]
+        {
+            Parser::Cbr parser;
+            auto stream = MakeMemoryStream(fixtures.ComicInfoCbrBytes);
+            auto result = parser.Parse(stream.Get());
+            VerifyParseResult(result, std::nullopt, SIZE{ 43, 63 });
+        });
+
+        suite.Run("CBR oversized preferred-image fallback", [&]
+        {
+            Parser::Cbr parser;
+            auto result = parser.Parse(fixtures.OversizedPreferredCbrPath.wstring());
+            VerifyParseResult(result, std::nullopt, SIZE{ 40, 60 });
+        });
+
+        suite.Run("CBR oversized preferred-image fallback through IStream", [&]
+        {
+            Parser::Cbr parser;
+            auto stream = MakeMemoryStream(fixtures.OversizedPreferredCbrBytes);
+            auto result = parser.Parse(stream.Get());
+            VerifyParseResult(result, std::nullopt, SIZE{ 40, 60 });
         });
 
         suite.Run("CBR oversized dictionary rejection", [&]

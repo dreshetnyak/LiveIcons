@@ -24,6 +24,14 @@ individual encoded image buffers at 64 MiB. RAR dictionaries are capped at
 sibling files. The shared WIC decoder rejects decoded bitmaps above 64 MiB
 (about 16.8 megapixels) for every format.
 
+CBR cover choice is independent of the order in which files were stored in the
+RAR. A root-level `ComicInfo.xml` page marked `FrontCover` takes precedence,
+followed by exact cover-name hints (`cover`, `front`, `frontcover`, or `folder`) and then
+natural filename order. If a preferred member is corrupt or is not a usable
+cover image, extraction continues with the next ranked candidate. ComicInfo
+page indices are resolved against the naturally sorted image list, matching
+the convention used by ComicRack.
+
 Parser regression tests are documented in [Tests/README.md](Tests/README.md).
 Running `LiveIconsTests.exe` with no arguments creates deterministic EPUB and
 FB2 fixtures and decodes checked-in RAR5 CBR fixtures; its corpus mode exercises

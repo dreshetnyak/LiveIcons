@@ -24,6 +24,9 @@
     <ClInclude Include="ClassFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CbrCoverSelection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="ReferenceCounter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -117,6 +120,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ClassFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CbrCoverSelection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Configuration.cpp">

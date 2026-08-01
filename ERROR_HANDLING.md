@@ -54,6 +54,10 @@ Logging is best effort and cannot change a thumbnail result:
 Malformed input is rejected before large allocations where the format API
 allows it. Current limits include:
 
+The shared WIC adapter presents encoded bytes through a read-only borrowed
+`IStream`, avoiding a second encoded-image allocation of up to 64 MiB while the
+source buffer remains alive for the synchronous decode.
+
 | Area | Limit |
 | --- | ---: |
 | Generic whole-file or whole-stream read | 512 MiB |
@@ -63,7 +67,9 @@ allows it. Current limits include:
 | ZIP member path / aggregate cached paths | 4 KiB / 8 MiB |
 | CHM entries / individual entry | 10,000 / 64 MiB |
 | MOBI markup / image resource / HUFF-CDIC offsets | 64 MiB / 64 MiB / 2 MiB |
-| CBR entries / individual image / total decompression / RAR dictionary | 10,000 / 64 MiB / 512 MiB / 128 MiB |
+| CBR entries / retained image-name characters | 10,000 / 2 million |
+| CBR image / ComicInfo metadata / ComicInfo page tags | 64 MiB / 1 MiB / 10,000 |
+| CBR total decompression / metadata discovery / RAR dictionary | 512 MiB / 64 MiB / 128 MiB |
 | CBR `IStream` snapshot | 1 GiB |
 
 ## Native-fault boundary

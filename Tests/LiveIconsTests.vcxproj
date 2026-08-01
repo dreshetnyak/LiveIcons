@@ -75,7 +75,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;Crypt32.lib;windowscodecs.lib;ole32.lib;gdi32.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;Crypt32.lib;windowscodecs.lib;ole32.lib;gdi32.lib;gdiplus.lib;xmllite.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 
@@ -113,6 +113,7 @@
 
   <ItemGroup>
     <ClCompile Include="LiveIconsTests.cpp" />
+    <ClCompile Include="..\LiveIcons\CbrCoverSelection.cpp" />
     <ClCompile Include="..\LiveIcons\DataIStream.cpp" />
     <ClCompile Include="..\LiveIcons\GlobalMem.cpp" />
     <ClCompile Include="..\LiveIcons\Gfx.cpp" />
@@ -141,6 +142,18 @@
     <None Include="Fixtures\cbr-rar5-solid-first-image.rar.base64">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <TargetPath>Fixtures\cbr-rar5-solid-first-image.rar.base64</TargetPath>
+    </None>
+    <None Include="Fixtures\cbr-rar5-ranked-fallback.rar.base64">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Fixtures\cbr-rar5-ranked-fallback.rar.base64</TargetPath>
+    </None>
+    <None Include="Fixtures\cbr-rar5-solid-comicinfo.rar.base64">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Fixtures\cbr-rar5-solid-comicinfo.rar.base64</TargetPath>
+    </None>
+    <None Include="Fixtures\cbr-rar5-oversized-preferred.rar.base64">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Fixtures\cbr-rar5-oversized-preferred.rar.base64</TargetPath>
     </None>
     <None Include="..\zlib\contrib\dotzlib\DotZLib.chm">
       <Link>Fixtures\DotZLib.chm</Link>

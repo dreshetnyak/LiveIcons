@@ -79,3 +79,87 @@ $bytes = [Convert]::FromBase64String($text)
 Get-FileHash -Algorithm SHA256 .\cbr-rar5-solid-first-image.rar
 & "C:\Program Files\WinRAR\Rar.exe" t -cfg- -c- .\cbr-rar5-solid-first-image.rar
 ```
+
+## Ranked fallback RAR5 archive
+
+`cbr-rar5-ranked-fallback.rar.base64` encodes a 585-byte non-solid RAR5
+archive. It verifies that selection is based on logical ranking rather than
+physical archive order and that a corrupt preferred member does not prevent a
+lower-ranked valid cover from being used.
+
+Decoded archive SHA-256:
+
+```text
+fa14d0e42685f375f4200c7c0046e97901fd866c718cdaf95f2fae6723761e4e
+```
+
+Archive members, in physical order:
+
+1. `003.png` — valid 43x63 PNG.
+2. `cover.jpg` — deliberately invalid image bytes. Its explicit cover name
+   gives it the highest filename-derived rank, so this exercises decode
+   fallback.
+3. `000.png` — valid 40x60 PNG and the naturally first usable page. This is
+   the expected result.
+
+The PNGs are original deterministic solid-color test graphics. The archive
+was created in store mode with paths, attributes, timestamps, quick-open data,
+and local WinRAR configuration disabled.
+
+## Solid ComicInfo RAR5 archive
+
+`cbr-rar5-solid-comicinfo.rar.base64` encodes a 639-byte solid RAR5 archive.
+It verifies that `ComicInfo.xml` image indices address only the naturally
+sorted image list, override both physical member order and explicit filename
+hints, and can be discovered after decoding a prefix of a solid stream.
+
+Decoded archive SHA-256:
+
+```text
+f17fe4207b8c7f2ee3c13ede570c9e7b7ffe2c3c169f22e65b372ca13989ee70
+```
+
+Archive members, in physical order:
+
+1. `003.png` — valid 43x63 PNG and the expected result.
+2. `00-note.txt` — a non-image member proving that metadata indices do not
+   count arbitrary archive entries.
+3. `ComicInfo.xml` — marks natural image index 1 as `Story FrontCover`.
+4. `000.png` — valid 40x60 PNG and natural image index 0.
+5. `cover.png` — valid 41x61 PNG whose explicit name would otherwise win.
+
+The original deterministic solid-color PNGs and metadata were compressed as a
+single solid stream. WinRAR's solid-file name sorting was disabled so the
+listed physical order is intentional; paths, attributes, timestamps,
+quick-open data, and local configuration were also disabled.
+
+```powershell
+& "C:\Program Files\WinRAR\Rar.exe" a -ma5 -s -ds -m3 -md1m -mt1 -qo- `
+    -htc -ep -ai -tsm- -tsc- -tsa- -tsp- -cfg- -idq -y `
+    cbr-rar5-solid-comicinfo.rar 003.png 00-note.txt ComicInfo.xml 000.png cover.png
+```
+
+## Oversized preferred-image RAR5 archive
+
+`cbr-rar5-oversized-preferred.rar.base64` encodes a 3,042-byte non-solid RAR5
+archive. Its explicit `cover.png` member expands to 64 MiB plus one byte, so it
+is statically ineligible under the parser's encoded-image limit. The parser
+must skip it and return the later 40x60 `000.png` fallback instead of allowing
+the unusable higher-ranked member to suppress a thumbnail.
+
+Decoded archive SHA-256:
+
+```text
+6b6fac9f08eac919a417ae15f6f4ce82b30d3e73493f1c8c948e74c3086ee3c7
+```
+
+Archive members, in physical order:
+
+1. `cover.png` — 67,108,865 zero bytes, deliberately one byte above the
+   encoded-image limit; compressed with a 128 MiB dictionary.
+2. `000.png` — valid deterministic 40x60 PNG; compressed with a 128 KiB
+   dictionary and expected as the result.
+
+The two members were appended separately so their dictionary requirements are
+independent. Paths, attributes, timestamps, quick-open data, and local WinRAR
+configuration were disabled.

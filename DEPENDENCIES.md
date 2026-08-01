@@ -62,6 +62,8 @@ No format feature was added.
 - None of the unfinished `FileVector`, `Archive`, private `DataSet`, or
   in-memory CBR modifications were replayed. CBR uses only the public UnRAR DLL
   API.
+- ComicInfo metadata is parsed with Windows' bounded XmlLite reader; it is an
+  operating-system component rather than a bundled third-party dependency.
 - Keep `unrar/license.txt` intact in source and binary distributions. UnRAR may
   be used for extraction, but its source may not be used to recreate the RAR
   compression algorithm.
@@ -75,11 +77,12 @@ No format feature was added.
 - UnRAR: Debug, Release, and `release_nocrypt` on Win32/x64.
 - LiveIcons: `LiveIcons.dll` rebuilt from the complete solution in Debug and
   Release on Win32/x64.
-- Parser/hardening suite: 29 deterministic checks pass in all four
+- Parser/hardening suite: 36 deterministic checks pass in all four
   configurations, including RAR5 non-solid and solid CBR parsing by path and
-  `IStream`, adversarial stream behavior, native CHMLib/libmobi guards, RAR
-  dictionary and volume policy, resource limits, stream-position restoration,
-  and malformed-input failure. The separate DLL boundary suite adds seven COM
+  `IStream`, deterministic CBR cover ranking and ComicInfo metadata selection,
+  adversarial stream behavior, native CHMLib/libmobi guards, RAR dictionary and
+  volume policy, resource limits, stream-position restoration, and
+  malformed-input failure. The separate DLL boundary suite adds seven COM
   lifetime, exception-firewall, and logging checks.
 
 ## Upstream references

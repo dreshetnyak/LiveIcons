@@ -1,5 +1,6 @@
 LiveIcons v1.1 development: 2026-08-01
 New. Added CBR cover extraction through the public UnRAR API, including solid archives and IStream input.
+Fix. Made CBR cover selection independent of RAR member order using ComicInfo FrontCover metadata, explicit cover names, and natural filename ranking with decode fallback.
 New. Added deterministic parser regression tests and recursive corpus smoke testing.
 New. Updated zlib to 1.3.2, libmobi to 0.12, and UnRAR to 7.23; retained the required modernized CHMLib fork.
 Fix. Removed LiveIcons' copied zlib internals and now use MiniZip's public archive-position API.

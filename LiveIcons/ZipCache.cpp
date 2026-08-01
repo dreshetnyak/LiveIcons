@@ -12,7 +12,7 @@ namespace Zip
 			return &PositionsCache[0];
 		}
 
-		if (unzGoToFirstFile(UnzFile) != UNZ_OK || !UnzFile->current_file_ok)
+		if (unzGoToFirstFile(UnzFile) != UNZ_OK)
 			return END_OF_LIST;
 		CurrentPositionIndex = 0;
 		return CacheCurrent();
@@ -28,7 +28,7 @@ namespace Zip
 			return &pos;
 		}
 
-		if (unzGoToNextFile(UnzFile) != UNZ_OK || !UnzFile->current_file_ok)
+		if (unzGoToNextFile(UnzFile) != UNZ_OK)
 			return END_OF_LIST;		
 		CurrentPositionIndex = nextIndex;
 		return CacheCurrent();
@@ -64,35 +64,38 @@ namespace Zip
 
 	void Cache::SetCurrent(const Position& position)
 	{
-		UnzFile->num_file = position.NumFile;
-		UnzFile->pos_in_central_dir = position.PosInCentralDir;
-		UnzFile->cur_file_info = position.CurFileInfo;
-		UnzFile->cur_file_info_internal = position.CurFileInfoInternal;
-		CurrentPositionIndex = position.FileIndex;		
+		CurrentPositionIndex = unzGoToFilePos64(UnzFile, &position.FilePosition) == UNZ_OK
+			? position.FileIndex
+			: UNKNOWN;
 	}
 	
 	// Private members
 
 	const Position* Cache::CacheCurrent()
 	{
-		if (!UnzFile->current_file_ok)
+		unz64_file_pos filePosition{};
+		if (unzGetFilePos64(UnzFile, &filePosition) != UNZ_OK)
 			return END_OF_LIST;
+
 		string currentFilePath;
-		if (!ReadCurrentFilePath(currentFilePath))
+		unz_file_info64 currentFileInfo{};
+		if (!ReadCurrentFileInfo(currentFilePath, currentFileInfo))
 			return END_OF_LIST;
 		const auto positionsCacheSize = PositionsCache.size();
-		PositionsCache.emplace_back(UnzFile, currentFilePath, positionsCacheSize);
+		PositionsCache.emplace_back(filePosition, currentFilePath, positionsCacheSize, static_cast<size_t>(currentFileInfo.uncompressed_size));
 		return &PositionsCache[positionsCacheSize];
 	}
 
-	bool Cache::ReadCurrentFilePath(string& outFilePath) const
+	bool Cache::ReadCurrentFileInfo(string& outFilePath, unz_file_info64& outFileInfo) const
 	{
-		const auto file_path_size = UnzFile->cur_file_info.size_filename;
-		auto filePath = string{};
-		filePath.resize(file_path_size);
-		if (unzGetCurrentFileInfo64(UnzFile, nullptr, filePath.data(), file_path_size, nullptr, 0, nullptr, 0) != UNZ_OK)
+		if (unzGetCurrentFileInfo64(UnzFile, &outFileInfo, nullptr, 0, nullptr, 0, nullptr, 0) != UNZ_OK)
 			return false;
-		filePath.resize(file_path_size);
+
+		auto filePath = string{};
+		filePath.resize(outFileInfo.size_filename);
+		if (unzGetCurrentFileInfo64(UnzFile, nullptr, filePath.data(), static_cast<uLong>(filePath.size()), nullptr, 0, nullptr, 0) != UNZ_OK)
+			return false;
+
 		outFilePath = filePath;
 		return true;
 	}

@@ -6,7 +6,6 @@
 #include <functional>
 #include "iowin32.h"
 #include "StrLib.h"
-#include "ZLibInternals.h"
 
 namespace Zip
 {

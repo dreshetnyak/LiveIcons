@@ -75,9 +75,6 @@
     <ClInclude Include="ZipPosition.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ZLibInternals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Log.h">
       <Filter>Header Files</Filter>
     </ClInclude>

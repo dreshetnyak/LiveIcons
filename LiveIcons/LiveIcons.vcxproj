@@ -214,7 +214,6 @@
     <ClInclude Include="ZipCache.h" />
     <ClInclude Include="ZipPosition.h" />
     <ClInclude Include="ZipStream.h" />
-    <ClInclude Include="ZLibInternals.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClassFactory.cpp" />
@@ -254,10 +253,10 @@
     <ProjectReference Include="..\libmobi\msvc\libmobi.vcxproj">
       <Project>{a48f597c-adbc-499e-b282-0f8a2b1a4b5f}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\zlib\contrib\vstudio\vc14\minizip.vcxproj">
+    <ProjectReference Include="..\zlib\contrib\vstudio\liveicons\minizip.vcxproj">
       <Project>{48cdd9dc-e09f-4135-9c0c-4fe50c3c654b}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\zlib\contrib\vstudio\vc14\zlibstat.vcxproj">
+    <ProjectReference Include="..\zlib\contrib\vstudio\liveicons\zlibstat.vcxproj">
       <Project>{745dec58-ebb3-47a9-a9b8-4c6627c01bf8}</Project>
     </ProjectReference>
   </ItemGroup>

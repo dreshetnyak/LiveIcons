@@ -12,4 +12,6 @@ To clone the project use the recursive flag:
 git clone --recursive https://github.com/dreshetnyak/LiveIcons.git
 That will also pull the submodules code.
 
-If unzip.c in ZLib is ever updated then make sure that ZLibInternals.h is up to date. It contains some internal structures copy-pasted from the ZLib.
+Dependency pins, upstream sources, and the small fork-specific build
+adaptations are documented in [DEPENDENCIES.md](DEPENDENCIES.md). LiveIcons
+uses MiniZip's public archive-position API and does not copy zlib internals.

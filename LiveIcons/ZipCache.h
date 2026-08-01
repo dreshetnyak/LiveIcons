@@ -6,12 +6,12 @@ namespace Zip
 {
 	class Cache
 	{
-		unz64_s* UnzFile;
+		unzFile UnzFile;
 		vector<Position> PositionsCache{};
 		size_t CurrentPositionIndex = UNKNOWN;
 
 	public:
-		explicit Cache(const unzFile zipFile) : UnzFile(static_cast<unz64_s*>(zipFile))
+		explicit Cache(const unzFile zipFile) : UnzFile(zipFile)
 		{ }
 
 		[[nodiscard]] const Position* First();
@@ -22,6 +22,6 @@ namespace Zip
 
 	private:
 		const Position* CacheCurrent();
-		[[nodiscard]] bool ReadCurrentFilePath(string& outFilePath) const;
+		[[nodiscard]] bool ReadCurrentFileInfo(string& outFilePath, unz_file_info64& outFileInfo) const;
 	};
 }

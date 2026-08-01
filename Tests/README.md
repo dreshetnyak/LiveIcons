@@ -19,9 +19,14 @@ Run deterministic tests (the default):
 ```
 
 The deterministic suite creates temporary EPUB and FB2 fixtures with an
-embedded 32-by-48 BMP cover. Both parsers are exercised through their path and
-in-memory `IStream` entry points. The suite also checks extension routing and
-the public ZIP cache traversal/rewind behavior.
+embedded 32-by-48 BMP cover. It also decodes checked-in non-solid and solid
+RAR5 fixtures into temporary CBR files. In both archives, the first member is a
+text note and the first image is a 40-by-60 BMP; the solid case verifies that
+the parser correctly processes the preceding member in the same compression
+stream. All cases are exercised through their path and in-memory `IStream`
+entry points. The suite also checks extension routing and the public ZIP cache
+traversal/rewind behavior. A malformed CBR is also checked through both entry
+points, including restoration of a nonzero input-stream position after failure.
 
 Run a recursive corpus smoke test instead:
 
@@ -29,11 +34,10 @@ Run a recursive corpus smoke test instead:
 .\Tests\bin\x64\Debug\LiveIconsTests.exe --corpus D:\Books
 ```
 
-Each `.epub`, `.fb2`, `.mobi`, `.azw`, `.azw3`, and `.chm` file is parsed once
-by path and once through `IStream`. Every returned `HBITMAP` is validated and
-deleted. A failure produces a nonzero exit code.
+Each `.epub`, `.fb2`, `.mobi`, `.azw`, `.azw3`, `.chm`, and `.cbr` file is
+parsed once by path and once through `IStream`. Every returned `HBITMAP` is
+validated and deleted. A failure produces a nonzero exit code.
 
-Once `ParserCbr` is implemented, enable its guarded source, UnRAR project
-reference, and corpus route by building with
-`/p:LiveIconsEnableCbrTests=true`. Until then, `.cbr` files in a corpus are
-reported as skipped rather than silently ignored.
+CBR tests and the UnRAR project reference are enabled by default. They can be
+intentionally omitted with `/p:LiveIconsEnableCbrTests=false`; in that build,
+`.cbr` files in a corpus are reported as skipped rather than silently ignored.

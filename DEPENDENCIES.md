@@ -10,7 +10,7 @@ only; format-specific behavior belongs in the LiveIcons repository.
 | zlib | `7bb473423c7f958d88a393c8dbe5c84c9db7a7fb` (1.2.13) | zlib 1.3.2, `da607da739fa6047df13e66a2af6b8bec7c2a498` | `liveicons-1.3.2` at `f6cc4a14179031c237b894175f1ebb2320969af1` |
 | libmobi | `7f7c6a1a0725a445218892a85f8324b5d3cf9cae` (0.11) | public 0.12 head, `906274205c11944b628da1c553b255acb1af7c55` | `liveicons-0.12` at `559183f1d6d4ab627aa56511f98a390993ac3b07` |
 | CHMLib | `8cad6e629cee1a5a7b769cde46e262cae9c6c055` | original repository tip `2bef8d063ec7d88a8de6fd9f0513ea42ac0fa21f` (already an ancestor) | `liveicons-0.40a` at `c3bfff838df20b0a78329fc902a7be4bbbe7c27d` |
-| UnRAR | not present on `master`; unfinished CBR work used `0a0d310` (6.21) | RARLAB `unrarsrc-7.2.7` / product 7.23, mirrored by `d861246` | `liveicons-7.23` at `8b43941dca4cd2f5a2548b6da27234fe926537a4` |
+| UnRAR | not present on `master`; unfinished CBR work used `0a0d310` (6.21) | RARLAB `unrarsrc-7.2.7` / product 7.23, mirrored by `d861246` | `liveicons-7.23` at `48e58525ae24e9fa99bc3416edc1047e4f2b68ef` |
 
 ## Preserved adaptations
 
@@ -50,7 +50,8 @@ submodule.
   `01d903a7dcf413cb2925696d7796e48e38d471f79bfe7ef3ad2aebf6c12dbefd`.
 - Only `.gitignore` and `UnRARDll.vcxproj` differ from the source snapshot.
   The project builds a v143 static library for Debug/Release (and the upstream
-  `release_nocrypt` configuration) on Win32/x64.
+  `release_nocrypt` configuration) on Win32/x64, using `/MDd` or `/MD` to
+  match LiveIcons.
 - None of the unfinished `FileVector`, `Archive`, private `DataSet`, or
   in-memory CBR modifications were replayed. CBR uses only the public UnRAR DLL
   API.
@@ -67,6 +68,9 @@ submodule.
 - UnRAR: Debug, Release, and `release_nocrypt` on Win32/x64.
 - LiveIcons: `LiveIcons.dll` rebuilt from the complete solution in Debug and
   Release on Win32/x64.
+- Parser regression suite: 14 deterministic checks pass in all four
+  configurations, including RAR5 non-solid and solid CBR parsing by path and
+  `IStream`, nonzero stream-position restoration, and malformed-CBR failure.
 
 ## Upstream references
 

@@ -3,8 +3,13 @@
 #include "DataIStream.h"
 #include "Utility.h"
 
+#include <cstdint>
+#include <limits>
+
 namespace Gfx
 {
+	constexpr std::uint64_t MaximumDecodedBitmapBytes{ 64ULL * 1024ULL * 1024ULL };
+
 	HRESULT ConvertPixelFormat(IWICBitmapSource* bitmapSource, IWICImagingFactory* imagingFactory, IWICBitmapSource** bitmapSourceConverted)
 	{
 		IWICFormatConverter* formatConverter;
@@ -40,6 +45,27 @@ namespace Gfx
 			bitmapSourceConverted->Release();
 			return result;
 		}
+
+		const auto width = static_cast<std::uint64_t>(nWidth);
+		const auto height = static_cast<std::uint64_t>(nHeight);
+		const auto maximumLong = static_cast<std::uint64_t>((std::numeric_limits<LONG>::max)());
+		const auto maximumPixels = MaximumDecodedBitmapBytes / 4ULL;
+		if (width == 0 || height == 0 || width > maximumLong || height > maximumLong ||
+			width > maximumPixels / height)
+		{
+			bitmapSourceConverted->Release();
+			return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+		}
+
+		const auto stride = width * 4ULL;
+		const auto bufferSize = stride * height;
+		if (stride > (std::numeric_limits<UINT>::max)() ||
+			bufferSize > (std::numeric_limits<UINT>::max)())
+		{
+			bitmapSourceConverted->Release();
+			return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+		}
+
 		imageSize.cx = static_cast<LONG>(nWidth);
 		imageSize.cy = static_cast<LONG>(nHeight);
 
@@ -60,7 +86,8 @@ namespace Gfx
 		}
 
 		const WICRect rect{ 0, 0, static_cast<INT>(nWidth), static_cast<INT>(nHeight) };
-		if (result = bitmapSourceConverted->CopyPixels(&rect, nWidth * 4, nWidth * nHeight * 4, ppvBits); SUCCEEDED(result)) // It actually does conversion, not just copy. The converted pixels is store in newBitmap
+		if (result = bitmapSourceConverted->CopyPixels(
+			&rect, static_cast<UINT>(stride), static_cast<UINT>(bufferSize), ppvBits); SUCCEEDED(result)) // It actually does conversion, not just copy. The converted pixels is store in newBitmap
 			outConvertedBitmap = newBitmap;
 		else
 			DeleteObject(newBitmap);

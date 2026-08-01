@@ -4,6 +4,9 @@
     <Filter Include="LiveIcons sources">
       <UniqueIdentifier>{6378BC50-CB9F-4584-8D97-B3444B837D08}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fixtures">
+      <UniqueIdentifier>{A8BFA724-3C06-45C6-B040-C72C27BC3CB8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LiveIconsTests.cpp" />
@@ -23,5 +26,10 @@
     <ClCompile Include="..\LiveIcons\ZipCache.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\ZipStream.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
     <ClCompile Include="..\LiveIcons\ParserCbr.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Fixtures\cbr-rar5-first-image.rar.base64"><Filter>Fixtures</Filter></None>
+    <None Include="Fixtures\cbr-rar5-solid-first-image.rar.base64"><Filter>Fixtures</Filter></None>
+    <None Include="Fixtures\README.md"><Filter>Fixtures</Filter></None>
   </ItemGroup>
 </Project>

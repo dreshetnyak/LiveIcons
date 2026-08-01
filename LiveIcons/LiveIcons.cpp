@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "LiveIcons.h"
+#include "ParserCbr.h"
 #include "ParserChm.h"
 #include "ParserFb2.h"
 #include "ParserMobi.h"
@@ -11,7 +12,8 @@ std::vector<std::shared_ptr<Parser::Base>> LiveIcons::Parsers
 	std::make_shared<Parser::Epub>(Parser::Epub{}),
 	std::make_shared<Parser::Fb2>(Parser::Fb2{}),
 	std::make_shared<Parser::Mobi>(Parser::Mobi{}),
-	std::make_shared<Parser::Chm>(Parser::Chm{})
+	std::make_shared<Parser::Chm>(Parser::Chm{}),
+	std::make_shared<Parser::Cbr>(Parser::Cbr{})
 };
 
 LiveIcons::LiveIcons()
@@ -100,9 +102,12 @@ IFACEMETHODIMP LiveIcons::Initialize(IStream* stream, DWORD)
 {
 	try
 	{
+		if (stream == nullptr)
+			return E_POINTER;
+
 		const auto result = Stream == nullptr
 			? stream->QueryInterface(&Stream)
-			: E_UNEXPECTED;
+			: HRESULT_FROM_WIN32(ERROR_ALREADY_INITIALIZED);
 
 		return result;
 	}
@@ -117,6 +122,13 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 {
 	try
 	{
+		if (outBitmapHandle == nullptr || putAlpha == nullptr)
+			return E_POINTER;
+		*outBitmapHandle = nullptr;
+		*putAlpha = WTSAT_UNKNOWN;
+		if (Stream == nullptr)
+			return HRESULT_FROM_WIN32(ERROR_INVALID_STATE);
+
 		Log::Write("LiveIcons::GetThumbnail: Starting.");
 
 		std::wstring fileName{};
@@ -134,11 +146,16 @@ IFACEMETHODIMP LiveIcons::GetThumbnail(UINT cx, HBITMAP* outBitmapHandle, WTS_AL
 			if (!parser->CanParse(fileExtension))
 				continue;
 
-			const auto&& parseResult = parser->Parse(Stream);
+			const auto parseResult = parser->Parse(Stream);
 			if (FAILED(parseResult.HResult))
 			{
 				Log::Write(StrLib::ToString(std::format(L"LiveIcons::GetThumbnail: Parsing error: {}", parseResult.Error)));
 				return parseResult.HResult;
+			}
+			if (parseResult.Cover == nullptr)
+			{
+				Log::Write("LiveIcons::GetThumbnail: Parser reported success without a cover bitmap.");
+				return E_FAIL;
 			}
 
 			Log::Write("LiveIcons::GetThumbnail: Parsing success. Cover image obtained.");

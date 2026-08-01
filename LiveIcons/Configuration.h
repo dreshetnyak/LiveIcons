@@ -12,6 +12,7 @@
 #define CLSID_AZW3_THUMBNAIL_PROVIDER_PATH L"Software\\Classes\\.azw3\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
 #define CLSID_AZW_THUMBNAIL_PROVIDER_PATH L"Software\\Classes\\.azw\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
 #define CLSID_CHM_THUMBNAIL_PROVIDER_PATH L"Software\\Classes\\.chm\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
+#define CLSID_CBR_THUMBNAIL_PROVIDER_PATH L"Software\\Classes\\.cbr\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
 
 typedef HRESULT(*CreateInstanceFunction)(REFIID riid, void** ppvObject);
 

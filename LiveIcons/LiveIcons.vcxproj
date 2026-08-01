@@ -196,6 +196,7 @@
     <ClInclude Include="LiveIcons.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="ParserBase.h" />
+    <ClInclude Include="ParserCbr.h" />
     <ClInclude Include="ParserChm.h" />
     <ClInclude Include="ParserEpub.h" />
     <ClInclude Include="ParserFb2.h" />
@@ -221,6 +222,7 @@
     <ClCompile Include="DataIStream.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="ParserBase.cpp" />
+    <ClCompile Include="ParserCbr.cpp" />
     <ClCompile Include="ParserChm.cpp" />
     <ClCompile Include="ParserEpub.cpp" />
     <ClCompile Include="GlobalMem.cpp" />
@@ -252,6 +254,9 @@
     </ProjectReference>
     <ProjectReference Include="..\libmobi\msvc\libmobi.vcxproj">
       <Project>{a48f597c-adbc-499e-b282-0f8a2b1a4b5f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\unrar\UnRARDll.vcxproj">
+      <Project>{e815c46c-36c4-499f-bbc2-e772c6b17971}</Project>
     </ProjectReference>
     <ProjectReference Include="..\zlib\contrib\vstudio\liveicons\minizip.vcxproj">
       <Project>{48cdd9dc-e09f-4135-9c0c-4fe50c3c654b}</Project>

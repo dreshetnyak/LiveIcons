@@ -2,6 +2,7 @@
 #include <Shlwapi.h>
 #include <objbase.h>
 #include <thumbcache.h>
+#include <wincrypt.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -49,6 +50,10 @@ namespace
 
     constexpr LONG FixtureWidth = 32;
     constexpr LONG FixtureHeight = 48;
+    constexpr LONG CbrFixtureWidth = 40;
+    constexpr LONG CbrFixtureHeight = 60;
+    constexpr size_t CbrFixtureArchiveSize = 7444;
+    constexpr size_t SolidCbrFixtureArchiveSize = 1332;
 
     [[noreturn]] void Fail(const std::string& message)
     {
@@ -416,6 +421,54 @@ namespace
         return bytes;
     }
 
+    fs::path GetExecutableDirectory()
+    {
+        std::vector<wchar_t> modulePath(32768);
+        const auto length = GetModuleFileNameW(
+            nullptr, modulePath.data(), static_cast<DWORD>(modulePath.size()));
+        Require(length != 0 && length < modulePath.size(),
+                "Unable to resolve the test executable directory");
+        return fs::path{ std::wstring{ modulePath.data(), length } }.parent_path();
+    }
+
+    std::vector<char> DecodeBase64Fixture(const fs::path& path)
+    {
+        const auto encodedBytes = ReadFile(path);
+        Require(encodedBytes.size() <= std::numeric_limits<DWORD>::max(),
+                "Base64 fixture is too large");
+
+        DWORD decodedSize{};
+        const auto encodedSize = static_cast<DWORD>(encodedBytes.size());
+        Require(CryptStringToBinaryA(
+                    encodedBytes.data(), encodedSize, CRYPT_STRING_BASE64,
+                    nullptr, &decodedSize, nullptr, nullptr) != FALSE,
+                "Unable to determine decoded size for " + Narrow(path.wstring()));
+
+        std::vector<char> decoded(decodedSize);
+        Require(CryptStringToBinaryA(
+                    encodedBytes.data(), encodedSize, CRYPT_STRING_BASE64,
+                    reinterpret_cast<BYTE*>(decoded.data()), &decodedSize, nullptr, nullptr) != FALSE,
+                "Unable to decode " + Narrow(path.wstring()));
+        decoded.resize(decodedSize);
+        return decoded;
+    }
+
+    std::vector<char> LoadRar5Fixture(
+        const std::wstring_view fixtureName, const size_t expectedArchiveSize)
+    {
+        const auto encodedPath = GetExecutableDirectory() / L"Fixtures" / fixtureName;
+        auto bytes = DecodeBase64Fixture(encodedPath);
+        Require(bytes.size() == expectedArchiveSize,
+                "Decoded CBR fixture has an unexpected size: " + Narrow(std::wstring{ fixtureName }));
+
+        static constexpr unsigned char Rar5Signature[]{ 'R', 'a', 'r', '!', 0x1A, 0x07, 0x01, 0x00 };
+        Require(bytes.size() >= sizeof(Rar5Signature) &&
+                    std::memcmp(bytes.data(), Rar5Signature, sizeof(Rar5Signature)) == 0,
+                "Decoded CBR fixture does not have a RAR5 signature: " +
+                    Narrow(std::wstring{ fixtureName }));
+        return bytes;
+    }
+
     StreamOwner MakeMemoryStream(const std::span<const char> bytes)
     {
         Require(bytes.size() <= std::numeric_limits<UINT>::max(), "Fixture is too large for SHCreateMemStream");
@@ -473,12 +526,30 @@ namespace
                         Narrow(*expectedTitle) + "'");
     }
 
+    void VerifyParseFailure(Parser::Result& result)
+    {
+        BitmapOwner bitmap(result.Cover);
+        result.Cover = nullptr;
+
+        Require(FAILED(result.HResult), "Parser unexpectedly reported success");
+        Require(bitmap.Get() == nullptr, "Parser returned an HBITMAP with a failure result");
+        Require(!result.Error.empty(), "Parser failure did not include a diagnostic message");
+    }
+
     struct Fixtures final
     {
         fs::path EpubPath;
         std::vector<char> EpubBytes;
         fs::path Fb2Path;
         std::vector<char> Fb2Bytes;
+#if defined(LIVEICONS_TEST_ENABLE_CBR)
+        fs::path CbrPath;
+        std::vector<char> CbrBytes;
+        fs::path SolidCbrPath;
+        std::vector<char> SolidCbrBytes;
+        fs::path InvalidCbrPath;
+        std::vector<char> InvalidCbrBytes;
+#endif
     };
 
     Fixtures CreateFixtures(const fs::path& directory)
@@ -517,6 +588,23 @@ namespace
         writer.Add("OPS/images/cover.bmp", cover, true);
         writer.Close();
         fixtures.EpubBytes = ReadFile(fixtures.EpubPath);
+
+#if defined(LIVEICONS_TEST_ENABLE_CBR)
+        fixtures.CbrBytes = LoadRar5Fixture(
+            L"cbr-rar5-first-image.rar.base64", CbrFixtureArchiveSize);
+        fixtures.CbrPath = directory / L"generated-cover.cbr";
+        WriteFile(fixtures.CbrPath, fixtures.CbrBytes);
+
+        fixtures.SolidCbrBytes = LoadRar5Fixture(
+            L"cbr-rar5-solid-first-image.rar.base64", SolidCbrFixtureArchiveSize);
+        fixtures.SolidCbrPath = directory / L"generated-solid-cover.cbr";
+        WriteFile(fixtures.SolidCbrPath, fixtures.SolidCbrBytes);
+
+        fixtures.InvalidCbrBytes = fixtures.CbrBytes;
+        fixtures.InvalidCbrBytes.front() = 'X';
+        fixtures.InvalidCbrPath = directory / L"invalid-signature.cbr";
+        WriteFile(fixtures.InvalidCbrPath, fixtures.InvalidCbrBytes);
+#endif
         return fixtures;
     }
 
@@ -552,10 +640,13 @@ namespace
     void TestRouting()
     {
         auto routes = MakeParserRoutes();
-        const std::vector<std::wstring> stableExtensions
+        std::vector<std::wstring> stableExtensions
         {
             L".epub", L".fb2", L".mobi", L".azw", L".azw3", L".chm"
         };
+#if defined(LIVEICONS_TEST_ENABLE_CBR)
+        stableExtensions.push_back(L".cbr");
+#endif
 
         for (const auto& extension : stableExtensions)
         {
@@ -584,7 +675,7 @@ namespace
 #if defined(LIVEICONS_TEST_ENABLE_CBR)
         Require(FindRoute(routes, L".cbr") != nullptr, "CBR tests are enabled but .cbr is not routed");
 #else
-        Require(FindRoute(routes, L".cbr") == nullptr, "Unfinished .cbr route is unexpectedly active");
+        Require(FindRoute(routes, L".cbr") == nullptr, "Disabled .cbr route is unexpectedly active");
 #endif
     }
 
@@ -691,6 +782,84 @@ namespace
             auto result = parser.Parse(stream.Get());
             VerifyParseResult(result, std::nullopt, SIZE{ FixtureWidth, FixtureHeight });
         });
+
+#if defined(LIVEICONS_TEST_ENABLE_CBR)
+        suite.Run("CBR path parsing", [&]
+        {
+            Parser::Cbr parser;
+            auto result = parser.Parse(fixtures.CbrPath.wstring());
+            VerifyParseResult(result, std::nullopt, SIZE{ CbrFixtureWidth, CbrFixtureHeight });
+        });
+
+        suite.Run("CBR IStream parsing", [&]
+        {
+            Parser::Cbr parser;
+            auto stream = MakeMemoryStream(fixtures.CbrBytes);
+            LARGE_INTEGER originalPosition{};
+            originalPosition.QuadPart = 17;
+            Require(SUCCEEDED(stream.Get()->Seek(originalPosition, STREAM_SEEK_SET, nullptr)),
+                    "Unable to position the CBR fixture stream before parsing");
+            auto result = parser.Parse(stream.Get());
+            VerifyParseResult(result, std::nullopt, SIZE{ CbrFixtureWidth, CbrFixtureHeight });
+
+            constexpr LARGE_INTEGER zero{};
+            ULARGE_INTEGER position{};
+            Require(SUCCEEDED(stream.Get()->Seek(zero, STREAM_SEEK_CUR, &position)) &&
+                        position.QuadPart == static_cast<ULONGLONG>(originalPosition.QuadPart),
+                    "CBR parser did not restore the input IStream position");
+        });
+
+        suite.Run("solid CBR path parsing", [&]
+        {
+            Parser::Cbr parser;
+            auto result = parser.Parse(fixtures.SolidCbrPath.wstring());
+            VerifyParseResult(result, std::nullopt, SIZE{ CbrFixtureWidth, CbrFixtureHeight });
+        });
+
+        suite.Run("solid CBR IStream parsing", [&]
+        {
+            Parser::Cbr parser;
+            auto stream = MakeMemoryStream(fixtures.SolidCbrBytes);
+            LARGE_INTEGER originalPosition{};
+            originalPosition.QuadPart = 23;
+            Require(SUCCEEDED(stream.Get()->Seek(originalPosition, STREAM_SEEK_SET, nullptr)),
+                    "Unable to position the solid CBR fixture stream before parsing");
+            auto result = parser.Parse(stream.Get());
+            VerifyParseResult(result, std::nullopt, SIZE{ CbrFixtureWidth, CbrFixtureHeight });
+
+            constexpr LARGE_INTEGER zero{};
+            ULARGE_INTEGER position{};
+            Require(SUCCEEDED(stream.Get()->Seek(zero, STREAM_SEEK_CUR, &position)) &&
+                        position.QuadPart == static_cast<ULONGLONG>(originalPosition.QuadPart),
+                    "Solid CBR parser did not restore the input IStream position");
+        });
+
+        suite.Run("invalid CBR path failure", [&]
+        {
+            Parser::Cbr parser;
+            auto result = parser.Parse(fixtures.InvalidCbrPath.wstring());
+            VerifyParseFailure(result);
+        });
+
+        suite.Run("invalid CBR IStream failure and restoration", [&]
+        {
+            Parser::Cbr parser;
+            auto stream = MakeMemoryStream(fixtures.InvalidCbrBytes);
+            LARGE_INTEGER originalPosition{};
+            originalPosition.QuadPart = 31;
+            Require(SUCCEEDED(stream.Get()->Seek(originalPosition, STREAM_SEEK_SET, nullptr)),
+                    "Unable to position the invalid CBR fixture stream before parsing");
+
+            auto result = parser.Parse(stream.Get());
+            VerifyParseFailure(result);
+
+            constexpr LARGE_INTEGER zero{};
+            ULARGE_INTEGER position{};
+            Require(SUCCEEDED(stream.Get()->Seek(zero, STREAM_SEEK_CUR, &position)) &&
+                        position.QuadPart == static_cast<ULONGLONG>(originalPosition.QuadPart),
+                    "Failed CBR parsing did not restore the input IStream position");
+        });
+#endif
     }
 
     bool IsCbr(const fs::path& path)
@@ -755,7 +924,7 @@ namespace
             if (route == nullptr)
             {
                 suite.Skip("corpus/CBR/" + displayPath,
-                           "build with /p:LiveIconsEnableCbrTests=true after ParserCbr is ready");
+                           "CBR tests were disabled with /p:LiveIconsEnableCbrTests=false");
                 continue;
             }
 

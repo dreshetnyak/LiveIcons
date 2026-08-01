@@ -58,7 +58,7 @@
     <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>LiveIconsTests</TargetName>
-    <LiveIconsEnableCbrTests Condition="'$(LiveIconsEnableCbrTests)'==''">false</LiveIconsEnableCbrTests>
+    <LiveIconsEnableCbrTests Condition="'$(LiveIconsEnableCbrTests)'==''">true</LiveIconsEnableCbrTests>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
@@ -130,6 +130,18 @@
     <ClCompile Include="..\LiveIcons\ZipStream.cpp" />
     <ClCompile Include="..\LiveIcons\ParserCbr.cpp"
                Condition="'$(LiveIconsEnableCbrTests)'=='true' and Exists('$(ProjectDir)..\LiveIcons\ParserCbr.cpp')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\cbr-rar5-first-image.rar.base64">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Fixtures\cbr-rar5-first-image.rar.base64</TargetPath>
+    </None>
+    <None Include="Fixtures\cbr-rar5-solid-first-image.rar.base64">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Fixtures\cbr-rar5-solid-first-image.rar.base64</TargetPath>
+    </None>
+    <None Include="Fixtures\README.md" />
   </ItemGroup>
 
   <ItemGroup>

@@ -16,8 +16,10 @@
 #include <vector>
 #include <functional>
 #include <new>
+#include <cstdint>
 #include <fstream>
 #include <format>
+#include <limits>
 #include <algorithm>
 #include <chrono>
 #include <corecrt_io.h>

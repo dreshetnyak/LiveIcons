@@ -26,6 +26,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libmobi", "libmobi\msvc\lib
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnRAR", "unrar\UnRARDll.vcxproj", "{E815C46C-36C4-499F-BBC2-E772C6B17971}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LiveIconsTests", "Tests\LiveIconsTests.vcxproj", "{9D388F52-4026-4BE2-B8D4-D17294E55392}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -82,6 +84,14 @@ Global
 		{E815C46C-36C4-499F-BBC2-E772C6B17971}.Release|x64.Build.0 = Release|x64
 		{E815C46C-36C4-499F-BBC2-E772C6B17971}.Release|x86.ActiveCfg = Release|Win32
 		{E815C46C-36C4-499F-BBC2-E772C6B17971}.Release|x86.Build.0 = Release|Win32
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Debug|x64.ActiveCfg = Debug|x64
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Debug|x64.Build.0 = Debug|x64
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Debug|x86.ActiveCfg = Debug|Win32
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Debug|x86.Build.0 = Debug|Win32
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Release|x64.ActiveCfg = Release|x64
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Release|x64.Build.0 = Release|x64
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Release|x86.ActiveCfg = Release|Win32
+		{9D388F52-4026-4BE2-B8D4-D17294E55392}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

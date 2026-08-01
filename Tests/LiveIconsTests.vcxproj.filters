@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="LiveIcons sources">
+      <UniqueIdentifier>{6378BC50-CB9F-4584-8D97-B3444B837D08}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LiveIconsTests.cpp" />
+    <ClCompile Include="..\LiveIcons\DataIStream.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\GlobalMem.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\Gfx.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ParserBase.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ParserChm.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ParserEpub.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ParserFb2.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ParserMobi.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\RamFile.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\StrLib.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\Utility.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\XmlDocument.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ZipArchive.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ZipCache.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ZipStream.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+    <ClCompile Include="..\LiveIcons\ParserCbr.cpp"><Filter>LiveIcons sources</Filter></ClCompile>
+  </ItemGroup>
+</Project>

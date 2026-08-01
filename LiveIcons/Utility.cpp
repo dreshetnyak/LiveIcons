@@ -73,14 +73,38 @@ namespace Utility
 
     HRESULT ReadFile(const std::wstring& fileFullName, std::vector<char>& outFileContent)
     {
-        std::ifstream fileStream{ fileFullName, ios::in | ios::binary | ios::ate };
-        if (!fileStream.is_open())
+        try
+        {
+            std::ifstream fileStream{ fileFullName, ios::in | ios::binary | ios::ate };
+            if (!fileStream.is_open())
+                return E_FAIL;
+
+            const auto endPosition = fileStream.tellg();
+            if (endPosition < 0)
+                return E_FAIL;
+
+            const auto fileSize = static_cast<std::uintmax_t>(static_cast<std::streamoff>(endPosition));
+            if (fileSize > outFileContent.max_size() ||
+                fileSize > static_cast<std::uintmax_t>((std::numeric_limits<std::streamsize>::max)()))
+                return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+
+            outFileContent.resize(static_cast<size_t>(fileSize));
+            fileStream.seekg(0, ios::beg);
+            if (!outFileContent.empty())
+                fileStream.read(outFileContent.data(), static_cast<std::streamsize>(outFileContent.size()));
+
+            return fileStream.good() || fileStream.eof() && fileStream.gcount() == static_cast<std::streamsize>(outFileContent.size())
+                ? S_OK
+                : E_FAIL;
+        }
+        catch (const std::bad_alloc&)
+        {
+            return E_OUTOFMEMORY;
+        }
+        catch (...)
+        {
             return E_FAIL;
-        outFileContent.reserve(fileStream.tellg());
-        fileStream.seekg(0);
-        std::copy(std::istream_iterator<char>(fileStream), std::istream_iterator<char>(), std::back_inserter(outFileContent));
-        fileStream.close();
-        return S_OK;
+        }
     }
 
     HRESULT GetIStreamFileName(IStream* stream, wstring& outFileName)

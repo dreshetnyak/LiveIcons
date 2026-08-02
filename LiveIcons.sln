@@ -10,6 +10,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LiveIcons", "LiveIcons\Live
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2FA7BDE5-B62F-4854-B99F-1B307275B529}"
 	ProjectSection(SolutionItems) = preProject
+		AGENTS.md = AGENTS.md
 		Changes.txt = Changes.txt
 		DEPENDENCIES.md = DEPENDENCIES.md
 		ERROR_HANDLING.md = ERROR_HANDLING.md

@@ -7,6 +7,11 @@ CHM, and CBR files. LIT support remains future work.
 Build requirements.
 Visual Studio 2022, C++.
 
+Versioning.
+LiveIcons releases follow Semantic Versioning (`MAJOR.MINOR.PATCH`). Release
+tags use `vMAJOR.MINOR.PATCH`; Windows numeric version resources map that value
+to `MAJOR,MINOR,PATCH,0` while displaying the three-part semantic version.
+
 Notes.
 To clone the project use the recursive flag:
 git clone --recursive https://github.com/dreshetnyak/LiveIcons.git

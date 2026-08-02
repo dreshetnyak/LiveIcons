@@ -21,23 +21,26 @@ abstractions or feature work in third-party forks.
 
 ## Canonical checkout and history
 
-- Work in this repository on branch `wip`. It was deliberately created from
-  `origin/master` at `79fad18`; there is no local `master` branch.
+- `master` is the canonical published branch and tracks `origin/master`. Start
+  normal work from an up-to-date `master` and use a focused topic branch unless
+  the user directs otherwise.
+- `wip` was the revival integration branch created from the previous
+  `origin/master` at `79fad18` and merged into `master` for LiveIcons 1.1.0. It
+  is historical context, not the default branch for new work.
 - `develop` contains old unfinished CBR/UnRAR experiments. Treat it as
   archaeological reference only. Do not merge or rebase it wholesale, and do
   not revive its private UnRAR `FileVector`, `Archive`, or `DataSet` approach.
-  The abandoned history and `wip` diverged at `402e0af`.
+  The abandoned history and the revival line diverged at `402e0af`.
 - Sibling copies such as `C:\Projects\LiveIcons_Local`,
   `C:\Projects\LiveIcons_`, or `C:\Projects\LiveIcons_Fubar` are not canonical.
   Do not copy changes from them unless the user explicitly asks for a
   historical comparison.
-- The current `wip` branch has no configured upstream and is not advertised by
-  `origin`. Do not claim the work is remotely backed up, and do not push or
-  create remote branches without the user's authorization.
+- Never rewrite or force-push `master` or a published release tag. Do not push
+  new branches/tags or other external state without the user's authorization.
 - Always inspect `git status --short --branch` and `git submodule status` before
   editing. Preserve unrelated changes and user-owned files.
-- `data-samples/` is an untracked, non-ignored, user-owned corpus containing
-  large book/comic files. Never edit, delete, stage, or commit it. Avoid
+- `data-samples/` is an ignored, user-owned local corpus containing large
+  book/comic files. Never edit, delete, force-add, or commit it. Avoid
   `git add -A`; stage explicit project-owned paths.
 - `.vs/`, build `bin/` and `obj/` trees are generated. In contrast,
   `LiveIcons.sln.DotSettings.user`, `LiveIcons/LiveIcons.vcxproj.user`, and
@@ -71,27 +74,19 @@ Use a Visual Studio Developer PowerShell. If `msbuild.exe` is not on `PATH`,
 locate it with Visual Studio Installer's `vswhere.exe`; do not hard-code a
 particular installed Visual Studio edition or version directory.
 
-The nominal command for cloning a published revision with its submodules is:
+Clone the published `master` revision with its dependencies using:
 
 ```powershell
 git clone --recursive https://github.com/dreshetnyak/LiveIcons.git
 ```
 
-This currently selects published `master`, not local `wip`. A recursive clone
-still depends on every legacy gitlink being reachable; verify the required
-pins rather than promising recovery. The same command is suitable for `wip`
-only after its root and dependency refs have been published. If a clone was
-created without recursion,
-`git submodule update --init --recursive` is the normal initialization command,
-but only when every required pin is known to be reachable.
-
-No configured fork `origin` ref currently advertises the dependency pins used
-by `wip`. Do not assume this exact state is fetchable, and do not discard or
-replace this valuable working checkout in an attempt to test clone recovery;
-see "Dependency and submodule policy" below. In this unpublished checkout, do
-not run `git submodule update` unless root and submodule status are clean, exact
-pin reachability is verified, and moving the submodule checkouts away from
-their local integration branches is explicitly intended.
+The dependency pins referenced by current `master` are published on the named
+fork integration branches. If a clone was created without recursion, initialize
+it with `git submodule update --init --recursive`. Exact historical revisions
+may depend on older gitlinks, so verify their reachability before promising
+historical recovery. In an existing checkout, do not run a submodule update
+until root and submodule status are clean and moving the submodule checkouts
+away from local integration branches is explicitly intended.
 
 Build the complete solution:
 
@@ -122,6 +117,27 @@ C runtimes (`/MDd` for Debug and `/MD` for Release). There is no NuGet restore.
 XmlLite, WIC, COM, GDI, and shell APIs come from Windows/its SDK. WinRAR is not
 needed to build or run checked-in tests; it is needed only to regenerate RAR
 fixtures.
+
+## Versioning and releases
+
+LiveIcons follows Semantic Versioning: `MAJOR.MINOR.PATCH`. Increment MAJOR for
+incompatible behavior/API changes, MINOR for backward-compatible features, and
+PATCH for backward-compatible fixes. Pre-release identifiers use valid SemVer,
+for example `1.2.0-alpha.1`.
+
+- Release tags are annotated and named `vMAJOR.MINOR.PATCH`; never move or reuse
+  a published tag.
+- The newest `Changes.txt` heading uses the same version and release date.
+- Windows fixed version resources use `MAJOR,MINOR,PATCH,0`; the `FileVersion`
+  and `ProductVersion` display strings use `MAJOR.MINOR.PATCH`.
+- Update all version declarations together and verify the built DLL's version
+  metadata before tagging. Visual Studio, Windows SDK, XML, and dependency
+  versions are unrelated and must not be changed as part of a product bump.
+- Publish and exact-hash verify dependency refs before a root release that uses
+  new gitlinks. Push `master` first, then push only the explicit release tag;
+  do not use `git push --tags`.
+
+LiveIcons 1.1.0 is the first release using this normalized SemVer convention.
 
 ## Architecture map
 
@@ -310,27 +326,22 @@ so a changed archive cannot silently invalidate ranking assumptions.
 The four submodules point to the user's minimal forks. Exact upstream commits,
 fork pins, patches, and licenses are authoritative in `DEPENDENCIES.md`.
 
-| Submodule | Local integration branch | Current pin |
+| Submodule | Integration branch | Current pin |
 | --- | --- | --- |
 | `zlib` | `liveicons-1.3.2` | `f6cc4a14179031c237b894175f1ebb2320969af1` |
 | `libmobi` | `liveicons-0.12` | `2416e40c3c942d5ea137fc8d5920e2127307c1e6` |
 | `chmlib` | `liveicons-0.40a` | `df46c6290253861bca82f4e2b19b75954a19db44` |
 | `unrar` | `liveicons-7.23` | `48e58525ae24e9fa99bc3416edc1047e4f2b68ef` |
 
-As observed on 2026-08-01, no configured fork `origin` ref advertises any of
-these four pins or their `liveicons-*` branch names, none of the local branches
-tracks a remote branch, and `origin` does not advertise root branch `wip`. Do
-not assume these commits are fetchable from a fresh clone. `origin/master`
-predates the new pins, but reachability of all of its legacy gitlinks must also
-be checked before promising a successful recursive clone. Publishing `wip`
-without first publishing its dependency refs can make its recursive checkout
-fail. Do not deinitialize, reset, clean, replace, or garbage-collect these
-submodule working trees.
+Each current pin is published by the corresponding fork integration branch and
+must remain reachable so `master` and release tags can be cloned recursively.
+Do not deinitialize, reset, clean, replace, or garbage-collect submodule working
+trees containing unpublished work.
 
-Before publishing a superproject pointer, push and verify the submodule commit
-first, then push the root branch. `git ls-remote` can succeed with no matching
-branch, so require the exact remote ref and compare its hash with the gitlink.
-For example:
+Before publishing a future superproject pointer, push and verify the submodule
+commit first, then push the root branch. `git ls-remote` can succeed with no
+matching branch, so require the exact remote ref and compare its hash with the
+gitlink. For example:
 
 ```powershell
 $localPin = git -C zlib rev-parse HEAD
@@ -496,7 +507,8 @@ For ordinary code changes:
 7. Stage explicit paths only. A changed submodule entry must be intentional and
    its commit must be safely reachable before publication.
 8. Report the exact configurations/tests run, remaining caveats, registration
-   or cache state changed, and any user files deliberately left untracked.
+   or cache state changed, and any ignored or untracked user files deliberately
+   left untouched.
 
 Do not weaken tests, suppress new project-owned warnings, hide failures behind
 logging, or report completion solely because the code compiles.

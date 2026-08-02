@@ -1,4 +1,4 @@
-LiveIcons v1.1 development: 2026-08-01
+LiveIcons v1.1.0: 2026-08-01
 New. Added CBR cover extraction through the public UnRAR API, including solid archives and IStream input.
 Fix. Made CBR cover selection independent of RAR member order using ComicInfo FrontCover metadata, explicit cover names, and natural filename ranking with decode fallback.
 New. Added deterministic parser regression tests and recursive corpus smoke testing.
@@ -15,39 +15,39 @@ Fix. Rejected multi-volume CBR input and RAR dictionaries above 128 MiB before U
 New. Added a privacy-preserving, rate-limited diagnostic log under LocalLow with rotation and stale-file cleanup.
 New. Added adversarial IStream, malformed-input, COM lifetime, exception-firewall, and logger boundary tests.
 
-LiveIcons v1.0: 2023-06-23
+LiveIcons v1.0.0: 2023-06-23
 New. Added support of CHM files.
 New. Updated the libmobi project to the latest.
 Fix. Updating VS broke the build, fixed the build, also changed many build settings.
 Fix. Some array deletions was done incorrectly, that could cause a crash.
 
-LiveIcons v0.8 alpha: 2022-03-03
+LiveIcons v0.8.0-alpha: 2022-03-03
 New. Now it supports MOBI, AZW and AZW3 formats.
 
-LiveIcons v0.7 alpha: 2022-03-01
+LiveIcons v0.7.0-alpha: 2022-03-01
 Wip. Adding MOBI format support.
 
-LiveIcons v0.6 alpha: 2022-02-26
+LiveIcons v0.6.0-alpha: 2022-02-26
 New. FB2 cover extractor added.
 Release is not compilable, the last commit from my other PC did not get all the changes.
 
-LiveIcons v0.5 alpha: 2022-02-25
+LiveIcons v0.5.0-alpha: 2022-02-25
 Fix. Fixed the issue that was causing the program to terminate.
 Fix. Release build was failing due to a missing link reference.
 Wip. Started writing FB2 parser, simple enough, will be ready soon.
 Epub is now working!
 
-LiveIcons v0.4 alpha: 2022-02-22
+LiveIcons v0.4.0-alpha: 2022-02-22
 Wip. Integrating the IStream parsing, not done yet.
 
-LiveIcons v0.3 alpha: 2022-02-21
+LiveIcons v0.3.0-alpha: 2022-02-21
 Fix. Fixed a couple of bugs that caused internal crashes.
 New. Started implementing file stream handler for zlib for it to be able to work with IStream.
 
-LiveIcons v0.2 alpha: 2022-02-18
+LiveIcons v0.2.0-alpha: 2022-02-18
 New. The zlib submodule is now pointing to the fork of zlib where I have commited the changes.
 
-LiveIcons v0.1 alpha: 2022-02-17
+LiveIcons v0.1.0-alpha: 2022-02-17
 New. Added the code from my other project that I devcided to convert to this one and started to implement image management for thumbnails.
 New. Added zlib 'develop' branch as a submodule, made it to compile with the following changes:
 The zlib repo is added as a submodule and switched to the 'develop' branch because main is several years behind it.
